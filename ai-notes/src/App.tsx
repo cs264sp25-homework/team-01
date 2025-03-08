@@ -3,7 +3,7 @@ import { api } from "../convex/_generated/api";
 import { useState } from "react";
 
 function App() {
-  const [showMessage, setShowMessage] = useState(true);
+  const [showMessage, setShowMessage] = useState(false);
   const message = useQuery(api.hello.greet, {
     name: " world",
   });
