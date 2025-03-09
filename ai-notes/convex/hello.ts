@@ -6,7 +6,7 @@ export const greet = query({
   args: {
     name: v.optional(v.string())
   }, 
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return `Hello, ${args.name ?? "world"}!`
   }
 })
