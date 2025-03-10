@@ -1,9 +1,9 @@
-name: Deploy ai-notes to GitHub Pages
+name: Deploy a Vite app to GitHub Pages
 
 on:
   push:
     branches:
-      - main  # or master, depending on your default branch name
+      - master
 
 permissions:
   contents: read
@@ -22,19 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.6
 
-      - name: Debug - List root directory
-        run: ls -la
-
-      - name: Debug - Check ai-notes directory exists
-        run: |
-          if [ -d "./ai-notes" ]; then
-            echo "ai-notes directory exists"
-            ls -la ./ai-notes
-          else
-            echo "ai-notes directory does not exist"
-            exit 1
-          fi
-
       - name: Install pnpm
         run: npm install -g pnpm
 
@@ -48,30 +35,17 @@ jobs:
         uses: actions/configure-pages@v5.0.0
 
       - name: Install dependencies
-        working-directory: ./ai-notes
         run: pnpm install
 
       - name: Deploy Convex and Build React App
-        working-directory: ./ai-notes
         run: npx convex deploy --cmd 'pnpm run build'
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
-      - name: Debug - Check dist directory
-        run: |
-          echo "Checking dist directory in ai-notes"
-          if [ -d "./ai-notes/dist" ]; then
-            echo "dist directory exists"
-            ls -la ./ai-notes/dist
-          else
-            echo "dist directory does not exist"
-            exit 1
-          fi
-
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3.0.1
         with:
-          path: ./ai-notes/dist
+          path: ./dist
 
   deploy:
     environment:
@@ -82,4 +56,4 @@ jobs:
     steps:
       - name: Deploy GitHub Pages site
         id: deployment
-        uses: actions/deploy-pages@v4.0.5 
+        uses: actions/deploy-pages@v4.0.5
