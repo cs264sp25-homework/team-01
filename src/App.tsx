@@ -41,58 +41,55 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="flex-1 flex items-center justify-center">
-        {isAuthenticated ? (
-          <div className="flex flex-col items-center gap-4 w-full max-w-md p-6">
-            <SignOut />
-            <div className="w-full">
-              <div>Token:</div>
-              <pre className="w-full text-wrap overflow-auto border rounded-md p-2">
-                {token}
-              </pre>
-            </div>
-            
-            <div className="mt-6 text-center w-full space-y-4">
-              <button
-                onClick={() => setShowEditor(true)}
-                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 shadow-md transition-colors"
-              >
-                Go to Editor
-              </button>
+    <div className="flex flex-col items-center justify-center h-screen gap-2">
+      {isAuthenticated ? (
+        <div className="flex flex-col items-center gap-4 max-w-md w-full p-6">
+          <SignOut />
+          <div className="w-full mt-4">
+            <div>Token:</div>
+            <pre className="w-full text-wrap overflow-auto border rounded-md p-2">
+              {token}
+            </pre>
+          </div>
+          
+          <div className="mt-6 text-center w-full space-y-4">
+            <button
+              onClick={() => setShowEditor(true)}
+              className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 shadow-md transition-colors"
+            >
+              Go to Editor
+            </button>
 
-              <button 
-                onClick={() => setShowMessage(!showMessage)} 
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-md transition-colors"
-              >
-                {showMessage ? "Hide Message" : "Show Message"}
-              </button>
-              
-              {showMessage && message === undefined && (
-                <div className="mt-4 text-gray-600">Loading message from backend...</div>
-              )}
-              
-              {showMessage && message !== undefined && (
-                <div className="mt-4">
-                  Backend says:{" "}
-                  <code className="border px-2 py-1 rounded-md text-sm bg-gray-50">{message}</code>
-                </div>
-              )}
-            </div>
+            <button 
+              onClick={() => setShowMessage(!showMessage)} 
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-md transition-colors"
+            >
+              {showMessage ? "Hide Message" : "Show Message"}
+            </button>
+            
+            {showMessage && message === undefined && (
+              <div className="mt-4 text-gray-600">Loading message from backend...</div>
+            )}
+            
+            {showMessage && message !== undefined && (
+              <div className="mt-4">
+                Backend says:{" "}
+                <code className="border px-2 py-1 rounded-md text-sm bg-gray-50">{message}</code>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative" style={{ 
-              position: 'absolute', 
-              left: '50%', 
-              top: '50%', 
-              transform: 'translate(-50%, -50%)'
-            }}>
-              <SignIn />
-            </div>
-          </div>
-        )}
-      </main>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-4xl font-bold">
+            AI Notes App
+          </h1>
+          <p className="text-lg text-gray-600 text-center p-2">
+            Smart note-taking with AI assistance.
+          </p>
+          <SignIn />
+        </>
+      )}
     </div>
   );
 }
