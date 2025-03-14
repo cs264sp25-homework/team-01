@@ -78,6 +78,8 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^0.483.0",
     "pdf-lib": "^1.17.1",
+    "@auth/core": "0.37.0",
+    "@convex-dev/auth": "^0.0.80",
     "react": "^19.0.0",
     "react-day-picker": "8.10.1",
     "react-dnd": "^16.0.1",
