@@ -8,6 +8,7 @@ import {
   createSlateEditor,
   serializeHtml,
   SlateLeaf,
+  SlateElement,
 } from "@udecode/plate";
 import { BaseAlignPlugin } from "@udecode/plate-alignment";
 import {
@@ -70,42 +71,22 @@ import { useEditorRef } from "@udecode/plate/react";
 import { all, createLowlight } from "lowlight";
 import { ArrowDownToLineIcon } from "lucide-react";
 
-import { BlockquoteElementStatic } from "@/components/plate-ui/blockquote-element-static";
-import { CodeBlockElementStatic } from "@/components/plate-ui/code-block-element-static";
-import { CodeLeafStatic } from "@/components/plate-ui/code-leaf-static";
-import { CodeLineElementStatic } from "@/components/plate-ui/code-line-element-static";
-import { CodeSyntaxLeafStatic } from "@/components/plate-ui/code-syntax-leaf-static";
-import { ColumnElementStatic } from "@/components/plate-ui/column-element-static";
-import { ColumnGroupElementStatic } from "@/components/plate-ui/column-group-element-static";
-import { CommentLeafStatic } from "@/components/plate-ui/comment-leaf-static";
-import { DateElementStatic } from "@/components/plate-ui/date-element-static";
-import { HeadingElementStatic } from "@/components/plate-ui/heading-element-static";
-import { HighlightLeafStatic } from "@/components/plate-ui/highlight-leaf-static";
-import { HrElementStatic } from "@/components/plate-ui/hr-element-static";
-import { ImageElementStatic } from "@/components/plate-ui/image-element-static";
-import {
-  FireLiComponent,
-  FireMarker,
-} from "@/components/plate-ui/indent-fire-marker";
-import {
-  TodoLiStatic,
-  TodoMarkerStatic,
-} from "@/components/plate-ui/indent-todo-marker-static";
-import { KbdLeafStatic } from "@/components/plate-ui/kbd-leaf-static";
-import { LinkElementStatic } from "@/components/plate-ui/link-element-static";
-import { MediaAudioElementStatic } from "@/components/plate-ui/media-audio-element-static";
-import { MediaFileElementStatic } from "@/components/plate-ui/media-file-element-static";
-import { MediaVideoElementStatic } from "@/components/plate-ui/media-video-element-static";
-import { MentionElementStatic } from "@/components/plate-ui/mention-element-static";
-import { ParagraphElementStatic } from "@/components/plate-ui/paragraph-element-static";
+import { FireLiComponent, FireMarker } from "./indent-fire-marker";
+import { TodoLiStatic, TodoMarkerStatic } from "./indent-todo-marker-static";
+import { KbdLeafStatic } from "./kbd-leaf-static";
+import { LinkElementStatic } from "./link-element-static";
+import { MentionElementStatic } from "./mention-element-static";
+import { ParagraphElementStatic } from "./paragraph-element-static";
 import {
   TableCellElementStatic,
   TableCellHeaderStaticElement,
-} from "@/components/plate-ui/table-cell-element-static";
-import { TableElementStatic } from "@/components/plate-ui/table-element-static";
-import { TableRowElementStatic } from "@/components/plate-ui/table-row-element-static";
-import { TocElementStatic } from "@/components/plate-ui/toc-element-static";
-import { ToggleElementStatic } from "@/components/plate-ui/toggle-element-static";
+} from "./table-cell-element-static";
+import { TableElementStatic } from "./table-element-static";
+import { TableRowElementStatic } from "./table-row-element-static";
+import { TocElementStatic } from "./toc-element-static";
+import { ToggleElementStatic } from "./toggle-element-static";
+import { EditorStatic } from "./editor-static";
+import { ToolbarButton } from "./toolbar";
 
 import {
   DropdownMenu,
@@ -115,10 +96,6 @@ import {
   DropdownMenuTrigger,
   useOpenState,
 } from "./dropdown-menu";
-import { EditorStatic } from "./editor-static";
-import { EquationElementStatic } from "./equation-element-static";
-import { InlineEquationElementStatic } from "./inline-equation-element-static";
-import { ToolbarButton } from "./toolbar";
 
 const siteUrl = "https://platejs.org";
 const lowlight = createLowlight(all);
@@ -185,29 +162,12 @@ export function ExportToolbarButton({ children, ...props }: DropdownMenuProps) {
 
   const exportToHtml = async () => {
     const components = {
-      [BaseAudioPlugin.key]: MediaAudioElementStatic,
-      [BaseBlockquotePlugin.key]: BlockquoteElementStatic,
+      [BaseParagraphPlugin.key]: ParagraphElementStatic,
       [BaseBoldPlugin.key]: withProps(SlateLeaf, { as: "strong" }),
-      [BaseCodeBlockPlugin.key]: CodeBlockElementStatic,
-      [BaseCodeLinePlugin.key]: CodeLineElementStatic,
-      [BaseCodePlugin.key]: CodeLeafStatic,
-      [BaseCodeSyntaxPlugin.key]: CodeSyntaxLeafStatic,
-      [BaseColumnItemPlugin.key]: ColumnElementStatic,
-      [BaseColumnPlugin.key]: ColumnGroupElementStatic,
-      [BaseCommentsPlugin.key]: CommentLeafStatic,
-      [BaseDatePlugin.key]: DateElementStatic,
-      [BaseEquationPlugin.key]: EquationElementStatic,
-      [BaseFilePlugin.key]: MediaFileElementStatic,
-      [BaseHighlightPlugin.key]: HighlightLeafStatic,
-      [BaseHorizontalRulePlugin.key]: HrElementStatic,
-      [BaseImagePlugin.key]: ImageElementStatic,
-      [BaseInlineEquationPlugin.key]: InlineEquationElementStatic,
       [BaseItalicPlugin.key]: withProps(SlateLeaf, { as: "em" }),
       [BaseKbdPlugin.key]: KbdLeafStatic,
       [BaseLinkPlugin.key]: LinkElementStatic,
-      // [BaseMediaEmbedPlugin.key]: MediaEmbedElementStatic,
       [BaseMentionPlugin.key]: MentionElementStatic,
-      [BaseParagraphPlugin.key]: ParagraphElementStatic,
       [BaseStrikethroughPlugin.key]: withProps(SlateLeaf, { as: "del" }),
       [BaseSubscriptPlugin.key]: withProps(SlateLeaf, { as: "sub" }),
       [BaseSuperscriptPlugin.key]: withProps(SlateLeaf, { as: "sup" }),
@@ -218,13 +178,12 @@ export function ExportToolbarButton({ children, ...props }: DropdownMenuProps) {
       [BaseTocPlugin.key]: TocElementStatic,
       [BaseTogglePlugin.key]: ToggleElementStatic,
       [BaseUnderlinePlugin.key]: withProps(SlateLeaf, { as: "u" }),
-      [BaseVideoPlugin.key]: MediaVideoElementStatic,
-      [HEADING_KEYS.h1]: withProps(HeadingElementStatic, { variant: "h1" }),
-      [HEADING_KEYS.h2]: withProps(HeadingElementStatic, { variant: "h2" }),
-      [HEADING_KEYS.h3]: withProps(HeadingElementStatic, { variant: "h3" }),
-      [HEADING_KEYS.h4]: withProps(HeadingElementStatic, { variant: "h4" }),
-      [HEADING_KEYS.h5]: withProps(HeadingElementStatic, { variant: "h5" }),
-      [HEADING_KEYS.h6]: withProps(HeadingElementStatic, { variant: "h6" }),
+      [HEADING_KEYS.h1]: withProps(SlateElement, { as: "h1" }),
+      [HEADING_KEYS.h2]: withProps(SlateElement, { as: "h2" }),
+      [HEADING_KEYS.h3]: withProps(SlateElement, { as: "h3" }),
+      [HEADING_KEYS.h4]: withProps(SlateElement, { as: "h4" }),
+      [HEADING_KEYS.h5]: withProps(SlateElement, { as: "h5" }),
+      [HEADING_KEYS.h6]: withProps(SlateElement, { as: "h6" }),
     };
 
     const editorStatic = createSlateEditor({
