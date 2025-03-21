@@ -1,7 +1,4 @@
 'use client';
-
-import React from 'react';
-
 import {
   BoldPlugin,
   CodePlugin,
@@ -34,7 +31,7 @@ import {
   WandSparklesIcon,
 } from 'lucide-react';
 
-import { MoreDropdownMenu } from '@/components/plate-ui/more-dropdown-menu';
+import { MoreDropdownMenu } from './more-dropdown-menu';
 
 import { AIToolbarButton } from './ai-toolbar-button';
 import { AlignDropdownMenu } from './align-dropdown-menu';
@@ -88,7 +85,6 @@ export function FixedToolbarButtons() {
 
             <ImportToolbarButton />
           </ToolbarGroup>
-
           <ToolbarGroup>
             <InsertDropdownMenu />
             <TurnIntoDropdownMenu />

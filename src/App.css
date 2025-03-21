@@ -204,3 +204,25 @@
   --brand: hsl(213.3 93.9% 67.8%);
   --highlight: hsl(48 96% 53%);
 }
+
+/* Editor styles */
+.app-container {
+  width: 100%;
+  height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.editor-container {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.editor {
+  padding: 1rem;
+  min-height: 400px;
+}

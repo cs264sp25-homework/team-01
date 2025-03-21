@@ -75,6 +75,7 @@
     "date-fns": "^4.1.0",
     "fzf": "0.5.2",
     "html2canvas": "^1.4.1",
+    "lowlight": "^3.3.0",
     "lucide-react": "^0.483.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
