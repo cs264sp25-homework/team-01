@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useState } from "react";
-import BasicEditor from "./editor/page";
+import BasicEditor from "./editor";
 
 //NOTE: for now just showing the editor page conditionally based on button to test the editor page
 //eventually we will need to implement routing when we create a real home page

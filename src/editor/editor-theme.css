@@ -1,0 +1,81 @@
+/* Custom theme overrides for Plate editor */
+
+/* Improve toolbar button contrast */
+.fixed-toolbar-theme {
+  /* Base toolbar styles */
+  --toolbar-background: white;
+  --toolbar-foreground: #333;
+  --toolbar-border: #e5e7eb;
+  
+  /* Button styles */
+  --button-text: #333;
+  --button-hover-bg: #f3f4f6;
+  --button-hover-text: #111;
+  --button-active-bg: #e5e7eb;
+  --button-active-text: #111;
+  
+  /* Icon colors */
+  --icon-color: #555;
+  --icon-hover-color: #333;
+  
+  /* Apply styles */
+  background-color: var(--toolbar-background) !important;
+  border-color: var(--toolbar-border) !important;
+  color: var(--toolbar-foreground) !important;
+}
+
+/* Style toolbar buttons */
+.fixed-toolbar-theme [role="button"],
+.fixed-toolbar-theme button {
+  color: var(--button-text) !important;
+  fill: var(--icon-color) !important;
+  stroke: var(--icon-color) !important;
+}
+
+.fixed-toolbar-theme [role="button"]:hover,
+.fixed-toolbar-theme button:hover {
+  background-color: var(--button-hover-bg) !important;
+  color: var(--button-hover-text) !important;
+  fill: var(--icon-hover-color) !important;
+  stroke: var(--icon-hover-color) !important;
+}
+
+.fixed-toolbar-theme [role="button"][aria-checked="true"],
+.fixed-toolbar-theme button[aria-checked="true"] {
+  background-color: var(--button-active-bg) !important;
+  color: var(--button-active-text) !important;
+}
+
+/* Style toolbar icons */
+.fixed-toolbar-theme svg {
+  color: var(--icon-color) !important;
+}
+
+.fixed-toolbar-theme [role="button"]:hover svg,
+.fixed-toolbar-theme button:hover svg {
+  color: var(--icon-hover-color) !important;
+}
+
+/* Fix for dropdown menus */
+.fixed-toolbar-theme [data-radix-popper-content-wrapper] {
+  --background: white;
+  --foreground: #333;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Dark mode support */
+[data-registry="plate"].dark .fixed-toolbar-theme {
+  --toolbar-background: #1f2937;
+  --toolbar-foreground: #f9fafb;
+  --toolbar-border: #374151;
+  
+  --button-text: #f9fafb;
+  --button-hover-bg: #374151;
+  --button-hover-text: #ffffff;
+  --button-active-bg: #4b5563;
+  --button-active-text: #ffffff;
+  
+  --icon-color: #d1d5db;
+  --icon-hover-color: #f9fafb;
+} 
