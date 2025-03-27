@@ -1,4 +1,4 @@
-import BasicEditor from './page';
+import BasicEditor from './customEditor';
 import './editor-theme.css';
 
 export { BasicEditor };
