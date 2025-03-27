@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -112,7 +112,7 @@ module.exports = {
   			],
   			mono: [
   				'var(--font-mono)',
-  				...require("tailwindcss/defaultTheme").fontFamily.mono
+  				...['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace']
   			],
   			sans: [
   				'var(--font-sans)',
@@ -132,5 +132,8 @@ module.exports = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate"), require("tailwind-scrollbar-hide")],
+  plugins: [
+    await import('tailwindcss-animate').then(m => m.default),
+    await import('tailwind-scrollbar-hide').then(m => m.default)
+  ],
 } 
