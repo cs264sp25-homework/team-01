@@ -1,7 +1,8 @@
 import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useState } from "react";
-import BasicEditor from "./editor";
+import CustomEditor from "./editor/CustomEditor";
+import "./App.css";
 
 //NOTE: for now just showing the editor page conditionally based on button to test the editor page
 //eventually we will need to implement routing when we create a real home page
@@ -14,14 +15,17 @@ function App() {
 
   if (showEditor) {
     return (
-      <div>
+      <div className="relative min-h-screen">
         <button
           onClick={() => setShowEditor(false)}
-          className="absolute top-4 left-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors"
+          className="fixed top-4 left-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors z-10"
         >
           Back to Home
         </button>
-        <BasicEditor />
+
+        <div className="flex justify-center items-center min-h-screen">
+          <CustomEditor />
+        </div>
       </div>
     );
   }
