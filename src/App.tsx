@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useState } from "react";
-import CustomEditor from "./editor/CustomEditor";
+import CustomEditor from "./editor/customEditor";
 import "./App.css";
 
 //NOTE: for now just showing the editor page conditionally based on button to test the editor page
