@@ -81,13 +81,7 @@ export function FixedToolbarButtons() {
             </AIToolbarButton>
           </ToolbarGroup>
 
-          <ToolbarGroup>
-            <ExportToolbarButton>
-              <ArrowUpToLineIcon />
-            </ExportToolbarButton>
-
-            <ImportToolbarButton />
-          </ToolbarGroup>
+    
           <ToolbarGroup>
             <InsertDropdownMenu />
             <TurnIntoDropdownMenu />
@@ -113,16 +107,6 @@ export function FixedToolbarButtons() {
               <UnderlineIcon />
             </MarkToolbarButton>
 
-            <MarkToolbarButton
-              nodeType={StrikethroughPlugin.key}
-              tooltip="Strikethrough (⌘+⇧+M)"
-            >
-              <StrikethroughIcon />
-            </MarkToolbarButton>
-
-            <MarkToolbarButton nodeType={CodePlugin.key} tooltip="Code (⌘+E)">
-              <Code2Icon />
-            </MarkToolbarButton>
 
             <ColorDropdownMenu
               nodeType={FontColorPlugin.key}
@@ -149,19 +133,6 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <LinkToolbarButton />
-            <TableDropdownMenu />
-            <EmojiDropdownMenu />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <MediaToolbarButton nodeType={ImagePlugin.key} />
-            <MediaToolbarButton nodeType={VideoPlugin.key} />
-            <MediaToolbarButton nodeType={AudioPlugin.key} />
-            <MediaToolbarButton nodeType={FilePlugin.key} />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
             <LineHeightDropdownMenu />
             <OutdentToolbarButton />
             <IndentToolbarButton />
@@ -175,16 +146,6 @@ export function FixedToolbarButtons() {
 
       <div className="grow" />
 
-      <ToolbarGroup>
-        <MarkToolbarButton nodeType={HighlightPlugin.key} tooltip="Highlight">
-          <HighlighterIcon />
-        </MarkToolbarButton>
-        <CommentToolbarButton />
-      </ToolbarGroup>
-
-      <ToolbarGroup>
-        <ModeDropdownMenu />
-      </ToolbarGroup>
     </div>
   );
 }
