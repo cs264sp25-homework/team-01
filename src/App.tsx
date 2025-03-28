@@ -44,14 +44,14 @@ function App() {
       <div className="space-y-4">
         <button
           onClick={() => setShowMessage(!showMessage)}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-md transition-colors mr-4"
+          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors mr-4"
         >
           {showMessage ? "Hide Message" : "Show Message"}
         </button>
 
         <button
           onClick={() => setShowEditor(true)}
-          className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 shadow-md transition-colors"
+          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors"
         >
           Go to Editor
         </button>
