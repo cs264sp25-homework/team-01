@@ -133,7 +133,7 @@ export default {
   	}
   },
   plugins: [
-    await import('tailwindcss-animate').then(m => m.default),
-    await import('tailwind-scrollbar-hide').then(m => m.default)
+    require('tailwindcss-animate'),
+    require('tailwind-scrollbar-hide')
   ],
 } 
