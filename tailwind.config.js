@@ -65,7 +65,33 @@ export default {
   			highlight: {
   				DEFAULT: 'hsl(var(--highlight))',
   				foreground: 'hsl(var(--highlight-foreground))'
-  			}
+  			},
+  			blue: {
+  				50: 'hsl(var(--primary) / 0.1)',
+  				100: 'hsl(var(--primary) / 0.2)',
+  				200: 'hsl(var(--primary) / 0.3)',
+  				300: 'hsl(var(--primary) / 0.4)',
+  				400: 'hsl(var(--primary) / 0.5)',
+  				500: 'hsl(var(--primary) / 0.6)',
+  				600: 'hsl(var(--primary) / 0.7)',
+  				700: 'hsl(var(--primary) / 0.8)',
+  				800: 'hsl(var(--primary) / 0.9)',
+  				900: 'hsl(var(--primary) / 1)',
+  				950: 'hsl(var(--primary) / 1)',
+  			},
+  			green: {
+  				50: 'hsl(var(--accent) / 0.1)',
+  				100: 'hsl(var(--accent) / 0.2)',
+  				200: 'hsl(var(--accent) / 0.3)',
+  				300: 'hsl(var(--accent) / 0.4)',
+  				400: 'hsl(var(--accent) / 0.5)',
+  				500: 'hsl(var(--accent) / 0.6)',
+  				600: 'hsl(var(--accent) / 0.7)',
+  				700: 'hsl(var(--accent) / 0.8)',
+  				800: 'hsl(var(--accent) / 0.9)',
+  				900: 'hsl(var(--accent) / 1)',
+  				950: 'hsl(var(--accent) / 1)',
+  			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

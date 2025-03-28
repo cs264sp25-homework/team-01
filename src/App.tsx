@@ -64,39 +64,37 @@ function App() {
 
   // Home page (authenticated)
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-end mb-4">
-          <SignOut />
-        </div>
-        
-        <div className="mb-6">
-          <div>Auth Token:</div>
-          <pre className="max-w-lg text-wrap mx-auto overflow-auto border rounded-md p-2 text-xs">
-            {token}
-          </pre>
-        </div>
-        
-        <div className="flex flex-col gap-4 items-center">
-          <button
-            onClick={() => setShowEditor(true)}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 shadow-md transition-colors w-full"
-          >
-            Go to Editor
-          </button>
+    <div
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "100%",
+        textAlign: "center",
+      }}
+    >
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowMessage(!showMessage)}
+          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors mr-4"
+        >
+          {showMessage ? "Hide Message" : "Show Message"}
+        </button>
 
-          <button
-            onClick={() => setShowMessage(!showMessage)}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-md transition-colors w-full"
-          >
-            {showMessage ? "Hide Message" : "Show Message"}
-          </button>
-          
-          {showMessage && message === undefined && (
-            <div className="mt-4 text-gray-600">
-              Loading message from backend...
-            </div>
-          )}
+        <button
+          onClick={() => setShowEditor(true)}
+          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors"
+        >
+          Go to Editor
+        </button>
+      </div>
+
+      {showMessage && message === undefined && (
+        <div className="mt-4 text-gray-600">
+          Loading message from backend...
+        </div>
+      )}
 
           {showMessage && message !== undefined && (
             <div className="mt-4">
