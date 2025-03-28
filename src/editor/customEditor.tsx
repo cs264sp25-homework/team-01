@@ -1,7 +1,12 @@
-import { Plate, usePlateEditor, PlateContent } from "@udecode/plate/react";
+import { Plate, usePlateEditor } from "@udecode/plate/react";
 import { EditorContainer, Editor } from "../components/plate-ui/editor";
 import { FixedToolbar } from "../components/plate-ui/fixed-toolbar";
 import { FixedToolbarButtons } from "../components/plate-ui/fixed-toolbar-buttons";
+import ChatSidebar from "../components/editor/ChatSidebar";
+import { useState, useRef } from "react";
+import { Button } from "../components/plate-ui/button";
+import { MessageCircleIcon } from "lucide-react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../components/ui/resizable";
 
 const value = [
   {
@@ -29,6 +34,9 @@ const value = [
 */
 
 export default function CustomEditor() {
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
+  const resizableRef = useRef<HTMLDivElement>(null);
+
   //this is getting it from local storage.. integrate w/ convex later..
   //const localValue = typeof window !== "undefined" && localStorage.getItem("editorContent");
 
@@ -39,18 +47,52 @@ export default function CustomEditor() {
   });
 
   return (
-    <Plate editor={editor}>
-      <EditorContainer className="editor-container" variant="default">
-        <FixedToolbar>
-          <FixedToolbarButtons />
-        </FixedToolbar>
-        <Editor
-          variant="default"
-          className="editor"
-          placeholder="Type something..."
-        />
-      </EditorContainer>
-    </Plate>
+    <div className="relative w-full h-full" ref={resizableRef}>
+      <ResizablePanelGroup direction="horizontal">
+        {/* Editor Panel */}
+        <ResizablePanel 
+          defaultSize={100} 
+          minSize={30}
+          style={{ transition: chatSidebarOpen ? 'none' : 'all 0.2s' }}
+        >
+          <Plate editor={editor}>
+            <EditorContainer className="editor-container" variant="default">
+              <FixedToolbar>
+                <div className="flex w-full justify-between">
+                  <FixedToolbarButtons />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+                    className="ml-2"
+                    title="Toggle AI Chat"
+                  >
+                    <MessageCircleIcon className="h-5 w-5" />
+                  </Button>
+                </div>
+              </FixedToolbar>
+              <Editor
+                variant="default"
+                className="editor"
+                placeholder="Type something..."
+              />
+            </EditorContainer>
+          </Plate>
+        </ResizablePanel>
+
+        {/* Resizable Handle - only shown when chat is open */}
+        {chatSidebarOpen && (
+          <ResizableHandle withHandle />
+        )}
+
+        {/* Chat Panel - conditionally rendered */}
+        {chatSidebarOpen && (
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={50}>
+            <ChatSidebar onClose={() => setChatSidebarOpen(false)} />
+          </ResizablePanel>
+        )}
+      </ResizablePanelGroup>
+    </div>
   );
 }
 

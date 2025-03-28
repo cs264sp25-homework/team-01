@@ -62,9 +62,61 @@ h1 {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   background-color: white;
   min-height: 400px;
+  transition: width 0.15s ease;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor {
   padding: 1rem;
   min-height: 300px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.with-sidebar {
+  width: calc(100% - 320px);
+}
+
+/* The sidebar should be fixed and have a resize handle */
+.chat-sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 10;
+  transition: width 0.15s ease;
+}
+
+/* Remove transition during active resizing to avoid lag */
+.chat-sidebar.resizing,
+.resizing .editor-container {
+  transition: none;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .with-sidebar {
+    width: 100% !important;
+    opacity: 0.7;
+  }
+  
+  .chat-sidebar {
+    width: 100% !important;
+  }
+
+  [data-panel-group][data-panel-group-direction="horizontal"] {
+    flex-direction: column;
+  }
+  
+  [data-panel-id] {
+    width: 100% !important;
+  }
+}
+
+/* Make sure our resizable panel group takes full height */
+[data-panel-group] {
+  height: 100vh;
 }
