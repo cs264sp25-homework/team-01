@@ -75,6 +75,17 @@ function App() {
       }}
     >
       <div className="space-y-4">
+        <div className="flex justify-center mb-4">
+          <SignOut />
+        </div>
+        
+        <div className="mb-6 max-w-md mx-auto">
+          <div>Auth Token:</div>
+          <pre className="text-xs text-wrap overflow-auto border rounded-md p-2 bg-gray-50">
+            {token}
+          </pre>
+        </div>
+        
         <button
           onClick={() => setShowMessage(!showMessage)}
           className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors mr-4"
@@ -96,16 +107,14 @@ function App() {
         </div>
       )}
 
-          {showMessage && message !== undefined && (
-            <div className="mt-4">
-              Backend says:{" "}
-              <code className="border px-2 py-1 rounded-md text-sm bg-gray-50">
-                {message}
-              </code>
-            </div>
-          )}
+      {showMessage && message !== undefined && (
+        <div className="mt-4">
+          Backend says:{" "}
+          <code className="border px-2 py-1 rounded-md text-sm bg-gray-50">
+            {message}
+          </code>
         </div>
-      </div>
+      )}
     </div>
   );
 }
