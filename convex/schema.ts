@@ -14,7 +14,13 @@ const schema = defineSchema({
     isAnonymous: v.optional(v.boolean()),
     // other "users" fields...
   }).index("email", ["email"]),
-  // Your other tables...
+  notes: defineTable({
+    title: v.string(),
+    content: v.string(),
+    userId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });
  
 export default schema;
