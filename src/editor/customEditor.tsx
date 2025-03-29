@@ -1,7 +1,25 @@
-import { Plate, usePlateEditor, PlateContent } from "@udecode/plate/react";
+/*
+import { Plate, usePlateEditor} from "@udecode/plate/react";
 import { EditorContainer, Editor } from "../components/plate-ui/editor";
 import { FixedToolbar } from "../components/plate-ui/fixed-toolbar";
 import { FixedToolbarButtons } from "../components/plate-ui/fixed-toolbar-buttons";
+import {
+  BoldPlugin,
+  ItalicPlugin,
+  UnderlinePlugin,
+  BasicMarksPlugin,
+} from "@udecode/plate-basic-marks/react";
+import {
+  FontColorPlugin,
+  FontBackgroundColorPlugin,
+  FontSizePlugin,
+} from "@udecode/plate-font/react";
+import { ParagraphPlugin } from "@udecode/plate/react";
+import { AlignPlugin } from "@udecode/plate-alignment/react";
+import { IndentPlugin } from "@udecode/plate-indent/react";
+import { LineHeightPlugin } from "@udecode/plate-line-height/react";
+import { ListPlugin } from "@udecode/plate-list/react";
+
 
 const value = [
   {
@@ -27,15 +45,28 @@ const value = [
  and loading it back when needed.
 
 */
-
+/*
 export default function CustomEditor() {
   //this is getting it from local storage.. integrate w/ convex later..
   //const localValue = typeof window !== "undefined" && localStorage.getItem("editorContent");
 
   // Create a Plate editor
   const editor = usePlateEditor({
-    //value: value,
-    plugins: [],
+    value,
+    plugins: [
+      ParagraphPlugin,
+      BasicMarksPlugin,
+      BoldPlugin,
+      ItalicPlugin,
+      UnderlinePlugin,
+      FontColorPlugin,
+      FontBackgroundColorPlugin,
+      FontSizePlugin,
+      AlignPlugin,
+      IndentPlugin,
+      LineHeightPlugin,
+      ListPlugin,
+    ],
   });
 
   return (
@@ -55,3 +86,4 @@ export default function CustomEditor() {
 }
 
 //s
+*/

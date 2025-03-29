@@ -3,10 +3,10 @@ import { api } from "../convex/_generated/api";
 import { useState } from "react";
 import { useConvexAuth } from "convex/react";
 import { useAuthToken } from "@convex-dev/auth/react";
-import CustomEditor from "./editor/customEditor";
 import { SignIn } from "./components/auth/sign-in";
 import { SignOut } from "./components/auth/sign-out";
 import "./App.css";
+import { PlateEditor } from "./components/editor/plate-editor";
 
 //NOTE: for now just showing the editor page conditionally based on button to test the editor page
 //eventually we will need to implement routing when we create a real home page
@@ -32,8 +32,8 @@ function App() {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh">
-        <h1 className="text-4xl font-bold mb-4">AI Notes App</h1>
-        <p className="text-lg text-gray-600 mb-6">Sign in to get started</p>
+        <h1 className="mb-4 text-4xl font-bold">AI Notes App</h1>
+        <p className="mb-6 text-lg text-gray-600">Sign in to get started</p>
         <SignIn />
       </div>
     );
@@ -45,18 +45,18 @@ function App() {
   if (showEditor) {
     return (
       <div className="relative min-h-screen">
-        <div className="fixed top-4 left-4 z-10 flex gap-2">
+        <div className="fixed z-10 flex gap-2 top-4 left-4">
           <button
             onClick={() => setShowEditor(false)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors"
+            className="px-4 py-2 text-gray-800 transition-colors bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Back to Home
           </button>
           <SignOut />
         </div>
 
-        <div className="flex justify-center items-center min-h-screen">
-          <CustomEditor />
+        <div className="flex items-center justify-center min-h-screen">
+          <PlateEditor />
         </div>
       </div>
     );
@@ -79,23 +79,23 @@ function App() {
           <SignOut />
         </div>
         
-        <div className="mb-6 max-w-md mx-auto">
+        <div className="max-w-md mx-auto mb-6">
           <div>Auth Token:</div>
-          <pre className="text-xs text-wrap overflow-auto border rounded-md p-2 bg-gray-50">
+          <pre className="p-2 overflow-auto text-xs border rounded-md text-wrap bg-gray-50">
             {token}
           </pre>
         </div>
         
         <button
           onClick={() => setShowMessage(!showMessage)}
-          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors mr-4"
+          className="px-6 py-3 mr-4 text-gray-100 transition-colors bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
         >
           {showMessage ? "Hide Message" : "Show Message"}
         </button>
 
         <button
           onClick={() => setShowEditor(true)}
-          className="px-6 py-3 bg-gray-900 text-gray-100 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-md transition-colors"
+          className="px-6 py-3 text-gray-100 transition-colors bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
         >
           Go to Editor
         </button>
@@ -110,7 +110,7 @@ function App() {
       {showMessage && message !== undefined && (
         <div className="mt-4">
           Backend says:{" "}
-          <code className="border px-2 py-1 rounded-md text-sm bg-gray-50">
+          <code className="px-2 py-1 text-sm border rounded-md bg-gray-50">
             {message}
           </code>
         </div>
