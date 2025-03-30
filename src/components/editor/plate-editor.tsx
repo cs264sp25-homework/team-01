@@ -1,5 +1,5 @@
 "use client";
-/*
+
 import { Plate } from '@udecode/plate/react';
 
 import { useCreateEditor } from '@/components/editor/use-create-editor';
@@ -16,5 +16,3 @@ export function PlateEditor() {
     </Plate>
   );
 }
-
-*/
