@@ -74,38 +74,38 @@ const insertBlockMap: Record<
   [ListStyleType.Decimal]: insertList,
   [ListStyleType.Disc]: insertList,
   [ACTION_THREE_COLUMNS]: (editor) =>
-    insertColumnGroup(editor, { columns: 3, select: true }),
+    insertColumnGroup(editor as any, { columns: 3, select: true }),
   [AudioPlugin.key]: (editor) =>
-    insertAudioPlaceholder(editor, { select: true }),
-  [CalloutPlugin.key]: (editor) => insertCallout(editor, { select: true }),
-  [CodeBlockPlugin.key]: (editor) => insertCodeBlock(editor, { select: true }),
-  [EquationPlugin.key]: (editor) => insertEquation(editor, { select: true }),
-  [FilePlugin.key]: (editor) => insertFilePlaceholder(editor, { select: true }),
+    insertAudioPlaceholder(editor as any, { select: true }),
+  [CalloutPlugin.key]: (editor) => insertCallout(editor as any, { select: true }),
+  [CodeBlockPlugin.key]: (editor) => insertCodeBlock(editor as any, { select: true }),
+  [EquationPlugin.key]: (editor) => insertEquation(editor as any, { select: true }),
+  [FilePlugin.key]: (editor) => insertFilePlaceholder(editor as any, { select: true }),
   [ImagePlugin.key]: (editor) =>
-    insertMedia(editor, {
+    insertMedia(editor as any, {
       select: true,
       type: ImagePlugin.key,
     }),
   [MediaEmbedPlugin.key]: (editor) =>
-    insertMedia(editor, {
+    insertMedia(editor as any, {
       select: true,
       type: MediaEmbedPlugin.key,
     }),
   [TablePlugin.key]: (editor) =>
     editor.getTransforms(TablePlugin).insert.table({}, { select: true }),
-  [TocPlugin.key]: (editor) => insertToc(editor, { select: true }),
+  [TocPlugin.key]: (editor) => insertToc(editor as any, { select: true }),
   [VideoPlugin.key]: (editor) =>
-    insertVideoPlaceholder(editor, { select: true }),
+    insertVideoPlaceholder(editor as any, { select: true }),
 };
 
 const insertInlineMap: Record<
   string,
   (editor: PlateEditor, type: string) => void
 > = {
-  [DatePlugin.key]: (editor) => insertDate(editor, { select: true }),
+  [DatePlugin.key]: (editor) => insertDate(editor as any, { select: true }),
   [InlineEquationPlugin.key]: (editor) =>
-    insertInlineEquation(editor, '', { select: true }),
-  [LinkPlugin.key]: (editor) => triggerFloatingLink(editor, { focused: true }),
+    insertInlineEquation(editor as any, '', { select: true }),
+  [LinkPlugin.key]: (editor) => triggerFloatingLink(editor as any, { focused: true }),
 };
 
 export const insertBlock = (editor: PlateEditor, type: string) => {
@@ -158,7 +158,7 @@ const setBlockMap: Record<
   [INDENT_LIST_KEYS.todo]: setList,
   [ListStyleType.Decimal]: setList,
   [ListStyleType.Disc]: setList,
-  [ACTION_THREE_COLUMNS]: (editor) => toggleColumnGroup(editor, { columns: 3 }),
+  [ACTION_THREE_COLUMNS]: (editor) => toggleColumnGroup(editor as any, { columns: 3 }),
 };
 
 export const setBlockType = (

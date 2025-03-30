@@ -81,91 +81,6 @@ export function FixedToolbarButtons() {
             </AIToolbarButton>
           </ToolbarGroup>
 
-    
-          <ToolbarGroup>
-            <InsertDropdownMenu />
-            <TurnIntoDropdownMenu />
-            <FontSizeToolbarButton />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <MarkToolbarButton nodeType={BoldPlugin.key} tooltip="Bold (⌘+B)">
-              <BoldIcon />
-            </MarkToolbarButton>
-
-            <MarkToolbarButton
-              nodeType={ItalicPlugin.key}
-              tooltip="Italic (⌘+I)"
-            >
-              <ItalicIcon />
-            </MarkToolbarButton>
-
-            <MarkToolbarButton
-              nodeType={UnderlinePlugin.key}
-              tooltip="Underline (⌘+U)"
-            >
-              <UnderlineIcon />
-            </MarkToolbarButton>
-
-
-            <ColorDropdownMenu
-              nodeType={FontColorPlugin.key}
-              tooltip="Text color"
-            >
-              <BaselineIcon />
-            </ColorDropdownMenu>
-
-            <ColorDropdownMenu
-              nodeType={FontBackgroundColorPlugin.key}
-              tooltip="Background color"
-            >
-              <PaintBucketIcon />
-            </ColorDropdownMenu>
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <AlignDropdownMenu />
-
-            <NumberedIndentListToolbarButton />
-            <BulletedIndentListToolbarButton />
-            <IndentTodoToolbarButton />
-            <ToggleToolbarButton />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <LineHeightDropdownMenu />
-            <OutdentToolbarButton />
-            <IndentToolbarButton />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <MoreDropdownMenu />
-          </ToolbarGroup>
-        </>
-      )}
-
-      <div className="grow" />
-
-    </div>
-  );
-}
-
-/*this is the tool bar with all the features. Right now do not need everything. maybe later add them back 
-  return (
-    <div className="flex w-full">
-      {!readOnly && (
-        <>
-          <ToolbarGroup>
-            <UndoToolbarButton />
-            <RedoToolbarButton />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <AIToolbarButton tooltip="AI commands">
-              <WandSparklesIcon />
-            </AIToolbarButton>
-          </ToolbarGroup>
-
           <ToolbarGroup>
             <ExportToolbarButton>
               <ArrowUpToLineIcon />
@@ -173,6 +88,7 @@ export function FixedToolbarButtons() {
 
             <ImportToolbarButton />
           </ToolbarGroup>
+
           <ToolbarGroup>
             <InsertDropdownMenu />
             <TurnIntoDropdownMenu />
@@ -273,4 +189,3 @@ export function FixedToolbarButtons() {
     </div>
   );
 }
-*/
