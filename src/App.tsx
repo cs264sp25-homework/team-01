@@ -22,7 +22,6 @@ function MainContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
-  const { isLoading, isAuthenticated } = useConvexAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const createNote = useMutation(api.notes.create);
@@ -32,9 +31,8 @@ function MainContent() {
 
   useEffect(() => {
     console.log("MainContent mounted");
-    console.log("Auth state:", { isLoading, isAuthenticated });
     console.log("Current location:", location.pathname);
-  }, [isLoading, isAuthenticated, location]);
+  }, [location]);
 
   const handleCreateNote = async (title: string) => {
     const noteId = await createNote({ title, content: "" });
@@ -72,25 +70,11 @@ function MainContent() {
     setIsRenameModalOpen(true);
   };
 
-  if (isLoading) {
-    console.log("Showing loading state");
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    console.log("Not authenticated, redirecting to signin");
-    return <Navigate to="/signin" replace />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-3 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-semibold text-gray-900 leading-none">AI Notes</h1>
+          <h1 className="text-2xl font-semibold leading-none text-gray-900">AI Notes</h1>
           <SignOut />
         </div>
       </header>
@@ -124,9 +108,9 @@ function MainContent() {
               <div
                 key={note._id}
                 onClick={() => navigate(`/notes/${note._id}`)}
-                className="relative p-6 bg-white border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
+                className="relative p-6 transition-shadow bg-white border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:shadow-md group"
               >
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute transition-opacity opacity-0 top-2 right-2 group-hover:opacity-100">
                   <button
                     onClick={(e) => openRenameModal(note, e)}
                     className="p-1.5 text-gray-500 hover:text-gray-700"
@@ -180,19 +164,29 @@ function MainContent() {
 
 function App() {
   const location = useLocation();
+  const { isLoading, isAuthenticated } = useConvexAuth();
   
   useEffect(() => {
     console.log("App mounted");
     console.log("Current route:", location.pathname);
-  }, [location]);
+    console.log("Auth state:", { isLoading, isAuthenticated });
+  }, [location, isLoading, isAuthenticated]);
+
+  // Show loading state while auth is being checked
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      <Route path="/signin" element={<SignIn />} />
-      <Route path="/" element={<MainContent />} />
-      <Route path="/team-01" element={<MainContent />} />
-      <Route path="/team-01/*" element={<MainContent />} />
-      <Route path="/notes/:noteId" element={<NotePage />} />
+      <Route path="/signin" element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} />
+      <Route path="/" element={<Navigate to="/team-01" replace />} />
+      <Route path="/team-01" element={isAuthenticated ? <MainContent /> : <Navigate to="/signin" replace />} />
+      <Route path="/notes/:noteId" element={isAuthenticated ? <NotePage /> : <Navigate to="/signin" replace />} />
     </Routes>
   );
 }

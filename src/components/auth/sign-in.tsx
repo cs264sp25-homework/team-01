@@ -17,7 +17,9 @@ export function SignIn() {
     try {
       await signIn("github");
       console.log("Sign in successful, navigating to home");
-      navigate("/");
+      setTimeout(() => {
+        navigate("/team-01");
+      }, 100);
     } catch (error) {
       console.error("Sign in error:", error);
     }
