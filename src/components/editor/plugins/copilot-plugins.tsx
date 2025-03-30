@@ -8,6 +8,8 @@ import { serializeMdNodes, stripMarkdown } from '@udecode/plate-markdown';
 
 import { GhostText } from '@/components/plate-ui/ghost-text';
 
+//need to change this with convex api.. can do vercel ai here or move idk..
+
 export const copilotPlugins = [
   CopilotPlugin.configure(({ api }) => ({
     options: {

@@ -3,24 +3,22 @@
 import { faker } from '@faker-js/faker';
 import { useChat as useBaseChat } from 'ai/react';
 
-import { useSettings } from '@/components/editor/settings';
 
 export const useChat = () => {
-  const { keys, model } = useSettings();
+
 
   return useBaseChat({
     id: 'editor',
     api: '/api/ai/command',
     body: {
-      // !!! DEMO ONLY: don't use API keys client-side
-      apiKey: keys.openai,
-      model: model.value,
+      // !!! DEMO ONLY: need to figure out convex here
     },
     fetch: async (input, init) => {
       const res = await fetch(input, init);
 
       if (!res.ok) {
         // Mock the API response. Remove it when you implement the route /api/ai/command
+        //we can call convex functions here
         await new Promise((resolve) => setTimeout(resolve, 400));
 
         const stream = fakeStreamText();
