@@ -74,6 +74,7 @@ h1 {
   min-height: 300px;
   flex: 1;
   overflow-y: auto;
+  height: 100%;
 }
 
 .with-sidebar {
@@ -119,4 +120,17 @@ h1 {
 /* Make sure our resizable panel group takes full height */
 [data-panel-group] {
   height: 100vh;
+}
+
+/* Ensure each panel handles its own content independently */
+[data-panel] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Ensure proper scrolling within panels */
+[data-panel] > div {
+  height: 100%;
+  overflow: auto;
 }

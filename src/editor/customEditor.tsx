@@ -42,42 +42,43 @@ export default function CustomEditor() {
 
   // Create a Plate editor
   const editor = usePlateEditor({
-    //value: value,
     plugins: [],
   });
 
   return (
     <div className="relative w-full h-full" ref={resizableRef}>
-      <ResizablePanelGroup direction="horizontal">
+      <ResizablePanelGroup direction="horizontal" className="h-full">
         {/* Editor Panel */}
         <ResizablePanel 
-          defaultSize={100} 
+          defaultSize={chatSidebarOpen ? 60 : 100} 
           minSize={30}
-          style={{ transition: chatSidebarOpen ? 'none' : 'all 0.2s' }}
+          className="transition-all duration-200"
         >
-          <Plate editor={editor}>
-            <EditorContainer className="editor-container" variant="default">
-              <FixedToolbar>
-                <div className="flex w-full justify-between">
-                  <FixedToolbarButtons />
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
-                    className="ml-2"
-                    title="Toggle AI Chat"
-                  >
-                    <MessageCircleIcon className="h-5 w-5" />
-                  </Button>
-                </div>
-              </FixedToolbar>
-              <Editor
-                variant="default"
-                className="editor"
-                placeholder="Type something..."
-              />
-            </EditorContainer>
-          </Plate>
+          <div className="h-full overflow-auto"> 
+            <Plate editor={editor}>
+              <EditorContainer className="editor-container min-h-[500px] h-full" variant="default">
+                <FixedToolbar>
+                  <div className="flex w-full justify-between">
+                    <FixedToolbarButtons />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+                      className="ml-2"
+                      title="Toggle AI Chat"
+                    >
+                      <MessageCircleIcon className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </FixedToolbar>
+                <Editor
+                  variant="default"
+                  className="editor"
+                  placeholder="Type something..."
+                />
+              </EditorContainer>
+            </Plate>
+          </div>
         </ResizablePanel>
 
         {/* Resizable Handle - only shown when chat is open */}
@@ -87,8 +88,10 @@ export default function CustomEditor() {
 
         {/* Chat Panel - conditionally rendered */}
         {chatSidebarOpen && (
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={50}>
-            <ChatSidebar onClose={() => setChatSidebarOpen(false)} />
+          <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
+            <div className="h-full flex-shrink-0">
+              <ChatSidebar onClose={() => setChatSidebarOpen(false)} />
+            </div>
           </ResizablePanel>
         )}
       </ResizablePanelGroup>

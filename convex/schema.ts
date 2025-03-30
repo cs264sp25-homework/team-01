@@ -21,6 +21,17 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+  messages: defineTable({
+    content: v.string(),
+    sender: v.union(v.literal("user"), v.literal("ai")),
+    userId: v.string(),
+    noteId: v.string(),
+    timestamp: v.number(),
+    isComplete: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_note", ["noteId"])
+    .index("by_user_and_note", ["userId", "noteId"]),
 });
  
 export default schema;
