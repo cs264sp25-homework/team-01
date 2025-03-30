@@ -147,7 +147,7 @@ const autoformatBlocks: AutoformatRule[] = [
     match: '```',
     mode: 'block',
     type: CodeBlockPlugin.key,
-    format: (editor: any) => {
+    format: (editor) => {
       insertEmptyCodeBlock(editor, {
         defaultType: ParagraphPlugin.key,
         insertNodesOptions: { select: true },
@@ -161,13 +161,13 @@ const autoformatBlocks: AutoformatRule[] = [
     type: TogglePlugin.key,
   },
   {
-    match: ["---", "—-", "___ "],
-    mode: "block",
+    match: ['---', '—-', '___ '],
+    mode: 'block',
     type: HorizontalRulePlugin.key,
-    format: (editor: any) => {
+    format: (editor) => {
       editor.tf.setNodes({ type: HorizontalRulePlugin.key });
       editor.tf.insertNodes({
-        children: [{ text: "" }],
+        children: [{ text: '' }],
         type: ParagraphPlugin.key,
       });
     },
@@ -176,10 +176,10 @@ const autoformatBlocks: AutoformatRule[] = [
 
 const autoformatIndentLists: AutoformatRule[] = [
   {
-    match: ["* ", "- "],
-    mode: "block",
-    type: "list",
-    format: (editor: any) => {
+    match: ['* ', '- '],
+    mode: 'block',
+    type: 'list',
+    format: (editor) => {
       toggleIndentList(editor, {
         listStyleType: ListStyleType.Disc,
       });
@@ -190,7 +190,7 @@ const autoformatIndentLists: AutoformatRule[] = [
     matchByRegex: true,
     mode: 'block',
     type: 'list',
-    format: (editor: any) =>
+    format: (editor) =>
       toggleIndentList(editor, {
         listStyleType: ListStyleType.Decimal,
       }),
@@ -199,7 +199,7 @@ const autoformatIndentLists: AutoformatRule[] = [
     match: ['[] '],
     mode: 'block',
     type: 'list',
-    format: (editor: any) => {
+    format: (editor) => {
       toggleIndentList(editor, {
         listStyleType: INDENT_LIST_KEYS.todo,
       });
@@ -213,7 +213,7 @@ const autoformatIndentLists: AutoformatRule[] = [
     match: ['[x] '],
     mode: 'block',
     type: 'list',
-    format: (editor: any) => {
+    format: (editor) => {
       toggleIndentList(editor, {
         listStyleType: INDENT_LIST_KEYS.todo,
       });
@@ -241,7 +241,7 @@ export const autoformatPlugin = AutoformatPlugin.configure({
     ].map(
       (rule): AutoformatRule => ({
         ...rule,
-        query: (editor: any) =>
+        query: (editor) =>
           !editor.api.some({
             match: { type: editor.getType(CodeBlockPlugin) },
           }),

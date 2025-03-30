@@ -1,4 +1,4 @@
-/*
+
 import { Plate, usePlateEditor} from "@udecode/plate/react";
 import { EditorContainer, Editor } from "../components/plate-ui/editor";
 import { FixedToolbar } from "../components/plate-ui/fixed-toolbar";
@@ -45,7 +45,7 @@ const value = [
  and loading it back when needed.
 
 */
-/*
+
 export default function CustomEditor() {
   //this is getting it from local storage.. integrate w/ convex later..
   //const localValue = typeof window !== "undefined" && localStorage.getItem("editorContent");
@@ -86,4 +86,4 @@ export default function CustomEditor() {
 }
 
 //s
-*/
+

@@ -3,18 +3,18 @@
 import { faker } from '@faker-js/faker';
 import { useChat as useBaseChat } from 'ai/react';
 
-//import { useSettings } from '@/components/editor/settings';
+import { useSettings } from '@/components/editor/settings';
 
 export const useChat = () => {
-  //const { keys, model } = useSettings();
+  const { keys, model } = useSettings();
 
   return useBaseChat({
     id: 'editor',
     api: '/api/ai/command',
     body: {
-      // replace with convex logic
-      //apiKey: keys.openai,
-      //model: model.value,
+      // !!! DEMO ONLY: don't use API keys client-side
+      apiKey: keys.openai,
+      model: model.value,
     },
     fetch: async (input, init) => {
       const res = await fetch(input, init);

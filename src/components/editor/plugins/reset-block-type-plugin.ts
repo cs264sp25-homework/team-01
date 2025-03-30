@@ -37,13 +37,13 @@ export const resetBlockTypePlugin = ResetNodePlugin.configure({
       {
         ...resetBlockTypesCommonRule,
         hotkey: 'Enter',
-        predicate: (editor: any) =>
+        predicate: (editor) =>
           editor.api.isEmpty(editor.selection, { block: true }),
       },
       {
         ...resetBlockTypesCommonRule,
         hotkey: 'Backspace',
-        predicate: (editor: any) => editor.api.isAt({ start: true }),
+        predicate: (editor) => editor.api.isAt({ start: true }),
       },
       {
         ...resetBlockTypesCodeBlockRule,

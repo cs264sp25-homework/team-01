@@ -1,6 +1,4 @@
 'use client';
-//this file usses mainly discussions on comments I think which we are not implementing so do not need this componennt
-/*
 
 import React, { useMemo } from 'react';
 
@@ -323,7 +321,7 @@ const BlockCommentsContent = ({
     return <div className="w-full">{children}</div>;
 
   return (
-    <div className="flex justify-between w-full">
+    <div className="flex w-full justify-between">
       <Popover
         open={open}
         onOpenChange={(_open_) => {
@@ -395,7 +393,7 @@ const BlockCommentsContent = ({
         </PopoverContent>
 
         {totalCount > 0 && (
-          <div className="relative left-0 select-none size-0">
+          <div className="relative left-0 size-0 select-none">
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
@@ -452,7 +450,7 @@ export const BlockComment = ({
         <CommentCreateForm discussionId={discussion.id} />
       </div>
 
-      {!isLast && <div className="w-full h-px bg-muted" />}
+      {!isLast && <div className="h-px w-full bg-muted" />}
     </React.Fragment>
   );
 };
@@ -499,7 +497,6 @@ export const useResolvedDiscussion = (
     }))
     .filter((item: TDiscussion) => {
       /** If comment cross blocks just show it in the first block */
-      /*
       const commentsPathMap = getOption('uniquePathMap');
       const firstBlockPath = commentsPathMap.get(item.id);
 
@@ -515,5 +512,3 @@ export const useResolvedDiscussion = (
 
   return resolvedDiscussions;
 };
-
-*/

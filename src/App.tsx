@@ -40,7 +40,7 @@ function App() {
   }
 
   // From here down, user is authenticated
-  
+
   // If in editor mode, show editor
   if (showEditor) {
     return (
@@ -78,14 +78,14 @@ function App() {
         <div className="flex justify-center mb-4">
           <SignOut />
         </div>
-        
+
         <div className="max-w-md mx-auto mb-6">
           <div>Auth Token:</div>
           <pre className="p-2 overflow-auto text-xs border rounded-md text-wrap bg-gray-50">
             {token}
           </pre>
         </div>
-        
+
         <button
           onClick={() => setShowMessage(!showMessage)}
           className="px-6 py-3 mr-4 text-gray-100 transition-colors bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
