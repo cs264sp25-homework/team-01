@@ -188,6 +188,9 @@ export const useCreateEditor = (
         FixedToolbarPlugin,
         FloatingToolbarPlugin,
       ],
+      //maybe can somehow return this from json convex call
+      //not entirely sure but this is my best guess for where we should start on saving conent
+      
       value: [
         {
           children: [{ text: 'Playground' }],
