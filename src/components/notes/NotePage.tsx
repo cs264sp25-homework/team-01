@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { SignOut } from "../auth/sign-out";
 import { PlateEditor } from "../editor/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
+import ChatSidebar from "../editor/ChatSidebar";
+import { MessageCircleIcon } from "lucide-react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../components/ui/resizable";
+import { Button } from "../plate-ui/button";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -18,6 +22,28 @@ export function NotePage() {
   const deleteNote = useMutation(api.notes.remove);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(note?.title || "");
+  
+  // Add state for chat sidebar
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
+  const resizableRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(64); // Default height
+
+  // Measure header height on mount and resize
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, []);
 
   const handleUpdateNote = async (content: string) => {
     if (!note || !noteId) return;
@@ -59,8 +85,9 @@ export function NotePage() {
   }
 
   return (
-    <div className="relative min-h-screen">
-      <div className="fixed z-10 w-full bg-white shadow-sm">
+    <div className="relative flex flex-col h-screen">
+      {/* Header - fixed at top */}
+      <div ref={headerRef} className="w-full bg-white shadow-sm z-20">
         <div className="flex items-center justify-between px-4 py-2 mx-auto max-w-7xl">
           <div className="flex items-center gap-2">
             <button
@@ -134,16 +161,67 @@ export function NotePage() {
                 />
               </svg>
             </button>
+            
+            {/* Add AI Chat Toggle Button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+              className="ml-2"
+              title="Toggle AI Chat"
+            >
+              <MessageCircleIcon className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center min-h-screen pt-16">
-        <div className="w-full max-w-4xl px-4">
-          <p className="mb-4 text-sm text-gray-500">
+      {/* Main content area - takes remaining height */}
+      <div 
+        className="flex-1 overflow-hidden" 
+        style={{ height: `calc(100vh - ${headerHeight}px)` }}
+      >
+        <div className="h-full mx-auto max-w-7xl px-4" ref={resizableRef}>
+          <p className="py-2 text-sm text-gray-500">
             Last edited: {new Date(note.updatedAt).toLocaleString()}
           </p>
-          <PlateEditor />
+          
+          {/* Resizable panel layout */}
+          <ResizablePanelGroup 
+            direction="horizontal" 
+            className="h-[calc(100%-2rem)]"
+          >
+            {/* Editor Panel */}
+            <ResizablePanel 
+              defaultSize={chatSidebarOpen ? 60 : 100} 
+              minSize={30}
+              className="transition-all duration-200"
+            >
+              <div className="h-full overflow-auto">
+                <PlateEditor 
+                  initialContent={note.content}
+                  onUpdate={handleUpdateNote}
+                />
+              </div>
+            </ResizablePanel>
+
+            {/* Resizable Handle - only shown when chat is open */}
+            {chatSidebarOpen && (
+              <ResizableHandle withHandle />
+            )}
+
+            {/* Chat Panel - conditionally rendered */}
+            {chatSidebarOpen && (
+              <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
+                <div className="h-full flex-shrink-0">
+                  <ChatSidebar 
+                    onClose={() => setChatSidebarOpen(false)} 
+                    noteId={noteId as string}
+                  />
+                </div>
+              </ResizablePanel>
+            )}
+          </ResizablePanelGroup>
         </div>
       </div>
     </div>
