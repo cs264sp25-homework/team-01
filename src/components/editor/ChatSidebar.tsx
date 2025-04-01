@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../plate-ui/button";
-import { Copy, Edit, RefreshCw, SendIcon, User2, XIcon, Check, BotMessageSquare, Paperclip } from "lucide-react";
+import {
+  Copy,
+  Edit,
+  RefreshCw,
+  SendIcon,
+  User2,
+  XIcon,
+  Check,
+  BotMessageSquare,
+  Paperclip,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "../plate-ui/avatar";
 import { cn } from "../../lib/utils";
 import { Textarea } from "../ui/textarea";
@@ -24,12 +34,12 @@ interface ChatSidebarProps {
 }
 
 // Message component for displaying individual messages
-const ChatMessage = ({ 
-  message, 
-  onEdit, 
-  onRegenerate 
-}: { 
-  message: Message; 
+const ChatMessage = ({
+  message,
+  onEdit,
+  onRegenerate,
+}: {
+  message: Message;
   onEdit: (id: string, content: string) => void;
   onRegenerate: (id: string) => void;
 }) => {
@@ -56,16 +66,16 @@ const ChatMessage = ({
   }, [message.content]);
 
   return (
-    <div className="flex gap-3 group hover:bg-accent/50 transition-colors p-2 rounded-md">
+    <div className="flex gap-3 p-2 transition-colors rounded-md group hover:bg-accent/50">
       <div className="flex-shrink-0">
-        <Avatar className="h-8 w-8">
+        <Avatar className="w-8 h-8">
           {isAi ? (
             <AvatarFallback className="bg-primary/10">
-              <BotMessageSquare className="h-4 w-4 text-primary" />
+              <BotMessageSquare className="w-4 h-4 text-primary" />
             </AvatarFallback>
           ) : (
             <AvatarFallback className="bg-secondary">
-              <User2 className="h-4 w-4 text-secondary-foreground" />
+              <User2 className="w-4 h-4 text-secondary-foreground" />
             </AvatarFallback>
           )}
         </Avatar>
@@ -78,14 +88,14 @@ const ChatMessage = ({
               {isAi ? "AI Assistant" : "You"}
             </span>
             <span className="text-xs text-muted-foreground">
-              {message.timestamp.toLocaleTimeString([], { 
-                hour: "numeric", 
-                minute: "2-digit" 
+              {message.timestamp.toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
               })}
             </span>
           </div>
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100">
             <Button
               variant="ghost"
               size="icon"
@@ -145,18 +155,22 @@ const ChatMessage = ({
               </div>
             </div>
           ) : (
-            <div className={cn("whitespace-pre-wrap break-words text-left", {
-              "opacity-70": message.isLoading,
-            })}>
+            <div
+              className={cn("whitespace-pre-wrap break-words text-left", {
+                "opacity-70": message.isLoading,
+              })}
+            >
               {message.isLoading ? (
                 <div className="flex items-center gap-2">
                   <span>Thinking...</span>
                   <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                   <div className="h-2 w-2 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-2 w-2 bg-current rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
                 </div>
               ) : message.error ? (
-                <span className="text-destructive">Error generating response. Please try again.</span>
+                <span className="text-destructive">
+                  Error generating response. Please try again.
+                </span>
               ) : (
                 message.content
               )}
@@ -170,34 +184,41 @@ const ChatMessage = ({
 
 export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   // Load chat history from Convex
-  const chatHistory = useQuery(api.chat.getChatHistory, { 
+  const chatHistory = useQuery(api.chat.getChatHistory, {
     noteId: noteId,
-    limit: 100 
+    limit: 100,
   });
-  
+
+  // Fetch the note data to provide context to the AI
+  const note = useQuery(api.notes.get, { id: noteId as Id<"notes"> });
+
   // Track if we're currently regenerating a message to prevent re-fetching issues
-  const [regeneratingMessageId, setRegeneratingMessageId] = useState<string | null>(null);
-  
+  const [regeneratingMessageId, setRegeneratingMessageId] = useState<
+    string | null
+  >(null);
+
   // Initialize messages with chat history or default welcome message
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Get the Convex actions and mutations
   const streamingChatAction = useAction(api.chat.streamingChatResponse);
-  const regenerateStreamingAction = useAction(api.chat.regenerateStreamingResponse);
+  const regenerateStreamingAction = useAction(
+    api.chat.regenerateStreamingResponse
+  );
   const deleteMessagesAfterMutation = useMutation(api.chat.deleteMessagesAfter);
   const updateMessageMutation = useMutation(api.chat.updateMessage);
-  
+
   // Initialize messages with chat history when it loads
   useEffect(() => {
     // Skip updating messages if we're currently regenerating a message
     if (regeneratingMessageId) return;
-    
+
     // Use the fallback inside the effect
     const history = chatHistory || [];
-    
+
     if (history.length > 0) {
       setMessages(
         history.map((msg) => ({
@@ -210,14 +231,16 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       );
     } else {
       // Set default welcome message if no history
-      setMessages([{
-        id: "welcome",
-        content: "Hi! I'm your AI assistant. How can I help with your document?",
-        sender: "ai",
-        timestamp: new Date(),
-      }]);
+      setMessages([
+        {
+          id: "welcome",
+          content: `Hi! I'm your AI assistant. I have access to your document${note?.title ? ` "${note.title}"` : ""} and can help you with questions about its content. How can I assist you?`,
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
     }
-  }, [chatHistory, regeneratingMessageId]);
+  }, [chatHistory, regeneratingMessageId, note?.title]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -226,7 +249,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -235,7 +258,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [inputValue]);
@@ -250,7 +273,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       sender: "user",
       timestamp: new Date(),
     };
-    
+
     // Create a placeholder for AI response
     const aiMessageId = `temp_ai_${Date.now() + 1}`;
     const aiMessagePlaceholder: Message = {
@@ -261,38 +284,40 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       isLoading: true,
       isStreaming: true,
     };
-    
+
     setMessages((prev) => [...prev, userMessage, aiMessagePlaceholder]);
     setInputValue("");
-    
+
     // Call the AI service through Convex with streaming
     try {
-      const response = await streamingChatAction({ 
+      const response = await streamingChatAction({
         message: inputValue,
-        noteId: noteId 
+        noteId: noteId,
+        noteTitle: note?.title,
+        noteContent: note?.content,
       });
-      
+
       // Update the AI message with the final response
-      setMessages((prev) => 
-        prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { 
-                ...msg, 
-                id: response.messageId, 
-                content: response.content, 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId
+            ? {
+                ...msg,
+                id: response.messageId,
+                content: response.content,
                 isLoading: false,
-                isStreaming: false
-              } 
+                isStreaming: false,
+              }
             : msg
         )
       );
     } catch (error) {
       console.error("Error in streaming chat:", error);
       // Handle error
-      setMessages((prev) => 
-        prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { ...msg, isLoading: false, error: true, isStreaming: false } 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId
+            ? { ...msg, isLoading: false, error: true, isStreaming: false }
             : msg
         )
       );
@@ -301,48 +326,56 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
 
   const handleRegenerateMessage = async (id: string) => {
     // Find the AI message to regenerate
-    const messageToRegenerate = messages.find(msg => msg.id === id);
+    const messageToRegenerate = messages.find((msg) => msg.id === id);
     if (!messageToRegenerate || messageToRegenerate.sender !== "ai") return;
-    
+
     // Set regenerating flag to prevent chat history updates
     setRegeneratingMessageId(id);
-    
+
     // Find the index of the message being regenerated
-    const messageIndex = messages.findIndex(msg => msg.id === id);
-    
+    const messageIndex = messages.findIndex((msg) => msg.id === id);
+
     // Remove all messages after this one from the UI
     if (messageIndex >= 0 && messageIndex < messages.length - 1) {
-      setMessages(prev => prev.slice(0, messageIndex + 1));
+      setMessages((prev) => prev.slice(0, messageIndex + 1));
     }
-    
+
     // Update the current AI message to show loading
-    setMessages(prev => 
-      prev.map(msg => 
-        msg.id === id 
-          ? { ...msg, content: "", isLoading: true, error: false, isStreaming: true } 
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === id
+          ? {
+              ...msg,
+              content: "",
+              isLoading: true,
+              error: false,
+              isStreaming: true,
+            }
           : msg
       )
     );
-    
+
     try {
       // For database messages (not temporary ones), use the ID for regeneration
-      if (!id.startsWith('temp_')) {
-        const response = await regenerateStreamingAction({ 
+      if (!id.startsWith("temp_")) {
+        const response = await regenerateStreamingAction({
           messageId: id as Id<"messages">,
           noteId: noteId,
-          contextMessageCount: 10
+          contextMessageCount: 10,
+          noteTitle: note?.title,
+          noteContent: note?.content,
         });
-        
+
         // Update the AI message with the final response
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === id 
-              ? { 
-                  ...msg, 
-                  content: response.content, 
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === id
+              ? {
+                  ...msg,
+                  content: response.content,
                   isLoading: false,
-                  isStreaming: false
-                } 
+                  isStreaming: false,
+                }
               : msg
           )
         );
@@ -350,7 +383,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
         // Handle temporary messages (shouldn't normally happen)
         throw new Error("Cannot regenerate temporary message");
       }
-      
+
       // Clear regenerating flag after a short delay to ensure UI is updated
       setTimeout(() => {
         setRegeneratingMessageId(null);
@@ -358,10 +391,10 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
     } catch (error) {
       console.error("Error regenerating message:", error);
       // Handle error
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === id 
-            ? { ...msg, isLoading: false, error: true, isStreaming: false } 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === id
+            ? { ...msg, isLoading: false, error: true, isStreaming: false }
             : msg
         )
       );
@@ -371,45 +404,41 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
 
   const handleEditMessage = async (id: string, newContent: string) => {
     // Find the message being edited
-    const messageIndex = messages.findIndex(msg => msg.id === id);
+    const messageIndex = messages.findIndex((msg) => msg.id === id);
     if (messageIndex < 0) return;
-    
+
     const message = messages[messageIndex];
-    
+
     // Update the edited message
-    setMessages(prev => 
-      prev.map(msg => 
-        msg.id === id 
-          ? { ...msg, content: newContent } 
-          : msg
-      )
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, content: newContent } : msg))
     );
-    
+
     // Remove all messages after this one from the UI
     if (messageIndex < messages.length - 1) {
-      setMessages(prev => prev.slice(0, messageIndex + 1));
-      
+      setMessages((prev) => prev.slice(0, messageIndex + 1));
+
       // Delete subsequent messages from the database if this is a database message
-      if (!id.startsWith('temp_')) {
+      if (!id.startsWith("temp_")) {
         try {
           await deleteMessagesAfterMutation({
             messageId: id as Id<"messages">,
-            noteId: noteId
+            noteId: noteId,
           });
         } catch (error) {
           console.error("Failed to delete subsequent messages:", error);
         }
       }
     }
-    
+
     // Update the message in the database if it's not a temporary message
-    if (!id.startsWith('temp_') && message.sender === "user") {
+    if (!id.startsWith("temp_") && message.sender === "user") {
       try {
         await updateMessageMutation({
           messageId: id as Id<"messages">,
-          content: newContent
+          content: newContent,
         });
-        
+
         // If this is a user message, we need to regenerate the AI response
         if (messageIndex < messages.length - 1) {
           const nextMessage = messages[messageIndex + 1];
@@ -424,38 +453,46 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-l border-border overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden border-l bg-background border-border">
       {/* Header - fixed at top */}
-      <div className="flex justify-between items-center p-4 border-b bg-muted/30 flex-shrink-0">
-        <h3 className="font-semibold text-lg">AI Assistant</h3>
+      <div className="flex items-center justify-between flex-shrink-0 p-4 border-b bg-muted/30">
+        <div className="flex flex-col">
+          <h3 className="text-lg font-semibold">AI Assistant</h3>
+          {note && (
+            <div className="flex items-center mt-1 text-xs text-muted-foreground">
+              <span className="inline-block w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+              Context: {note.title || "Current document"}
+            </div>
+          )}
+        </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
-          <XIcon className="h-4 w-4" />
+          <XIcon className="w-4 h-4" />
         </Button>
       </div>
-      
+
       {/* Messages Area - scrollable with fixed height */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 text-left max-h-[calc(100vh-200px)]">
         {messages.map((message) => (
-          <ChatMessage 
-            key={message.id} 
-            message={message} 
+          <ChatMessage
+            key={message.id}
+            message={message}
             onEdit={handleEditMessage}
             onRegenerate={handleRegenerateMessage}
           />
         ))}
         <div ref={messagesEndRef} />
       </div>
-      
+
       {/* Input Area - fixed at bottom */}
-      <div className="p-4 border-t bg-muted/20 flex-shrink-0">
-        <div className="relative flex items-end border border-input bg-background rounded-lg">
+      <div className="flex-shrink-0 p-4 border-t bg-muted/20">
+        <div className="relative flex items-end border rounded-lg border-input bg-background">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute left-4 bottom-3 h-8 w-8 hover:bg-accent"
+            className="absolute w-8 h-8 left-4 bottom-3 hover:bg-accent"
           >
-            <Paperclip className="h-5 w-5 text-muted-foreground" />
+            <Paperclip className="w-5 h-5 text-muted-foreground" />
           </Button>
           <Textarea
             ref={textareaRef}
@@ -474,18 +511,18 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
             )}
             rows={1}
           />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={!inputValue.trim()} 
+          <Button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim()}
             type="button"
             size="icon"
             variant="ghost"
-            className="absolute right-4 bottom-3 h-8 w-8 flex items-center justify-center hover:bg-accent disabled:opacity-50"
+            className="absolute flex items-center justify-center w-8 h-8 right-4 bottom-3 hover:bg-accent disabled:opacity-50"
           >
-            <SendIcon className="h-4 w-4" />
+            <SendIcon className="w-4 h-4" />
           </Button>
         </div>
       </div>
     </div>
   );
-} 
+}
