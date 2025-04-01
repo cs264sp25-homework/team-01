@@ -10,7 +10,9 @@ export const list = query({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+
+
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const notes = await ctx.db
       .query("notes")
@@ -31,7 +33,7 @@ export const get = query({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const note = await ctx.db.get(args.id);
     
@@ -59,7 +61,8 @@ export const create = mutation({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+    // Extract the stable part of the tokenIdentifier
+    const userId = identity.tokenIdentifier.split("|")[1];
     const now = Date.now();
     
     const noteId = await ctx.db.insert("notes", {
@@ -69,6 +72,8 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    
+
     
     return noteId;
   },
@@ -87,7 +92,7 @@ export const update = mutation({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const existingNote = await ctx.db.get(args.id);
     
@@ -122,7 +127,7 @@ export const remove = mutation({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const existingNote = await ctx.db.get(args.id);
     
@@ -152,7 +157,7 @@ export const rename = mutation({
       throw new Error("Unauthorized");
     }
 
-    const userId = identity.subject;
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const existingNote = await ctx.db.get(args.id);
     
