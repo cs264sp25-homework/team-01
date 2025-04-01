@@ -4,7 +4,6 @@ import React from 'react';
 
 import {
   BoldPlugin,
-  CodePlugin,
   ItalicPlugin,
   StrikethroughPlugin,
   UnderlinePlugin,
@@ -12,7 +11,6 @@ import {
 import { useEditorReadOnly } from '@udecode/plate/react';
 import {
   BoldIcon,
-  Code2Icon,
   ItalicIcon,
   StrikethroughIcon,
   UnderlineIcon,
@@ -20,7 +18,6 @@ import {
 } from 'lucide-react';
 
 import { AIToolbarButton } from './ai-toolbar-button';
-import { CommentToolbarButton } from './comment-toolbar-button';
 import { InlineEquationToolbarButton } from './inline-equation-toolbar-button';
 import { LinkToolbarButton } from './link-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
@@ -71,9 +68,6 @@ export function FloatingToolbarButtons() {
               <StrikethroughIcon />
             </MarkToolbarButton>
 
-            <MarkToolbarButton nodeType={CodePlugin.key} tooltip="Code (⌘+E)">
-              <Code2Icon />
-            </MarkToolbarButton>
 
             <InlineEquationToolbarButton />
 
@@ -83,7 +77,6 @@ export function FloatingToolbarButtons() {
       )}
 
       <ToolbarGroup>
-        <CommentToolbarButton />
         <SuggestionToolbarButton />
 
         {!readOnly && <MoreDropdownMenu />}
