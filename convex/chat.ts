@@ -14,11 +14,12 @@ export const getChatHistory = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const limit = args.limit ?? 50;
     
@@ -45,11 +46,12 @@ export const storeMessage = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const messageId = await ctx.db.insert("messages", {
       content: args.content,
@@ -73,11 +75,12 @@ export const updateMessage = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const message = await ctx.db.get(args.messageId);
     if (!message) {
@@ -429,11 +432,12 @@ export const deleteMessagesAfter = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     // Get the message to find its timestamp
     const message = await ctx.db.get(args.messageId);
