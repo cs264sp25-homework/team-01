@@ -217,18 +217,12 @@ export function NotePage() {
               className="transition-all duration-200"
             >
               <div className="h-full overflow-auto">
-                {isContentSaving ? (
-                  <div className="flex items-center justify-center p-4 text-gray-500">
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Saving...
-                  </div>
-                ) : (
-                  <PlateEditor 
-                    initialContent={note.content}
-                    onUpdate={handleUpdateNote}
-                    autoSave={true}
-                  />
-                )}
+                <PlateEditor 
+                  initialContent={note.content}
+                  onUpdate={handleUpdateNote}
+                  autoSave={true}
+                  isSaving={isContentSaving}
+                />
               </div>
             </ResizablePanel>
 
