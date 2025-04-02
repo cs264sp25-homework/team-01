@@ -38,7 +38,7 @@ export const get = query({
     const note = await ctx.db.get(args.id);
     
     if (!note) {
-      throw new Error("Note not found");
+      return null;
     }
     
     if (note.userId !== userId) {
