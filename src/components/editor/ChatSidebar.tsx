@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "../plate-ui/button";
 import {
   Copy,
@@ -210,6 +210,15 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   );
   const deleteMessagesAfterMutation = useMutation(api.chat.deleteMessagesAfter);
   const updateMessageMutation = useMutation(api.chat.updateMessage);
+  const clearChatHistoryMutation = useMutation(api.chat.clearChatHistory);
+
+  // Move the function outside the component or use useCallback
+  const getDefaultWelcomeMessage = useCallback((): Message => ({
+    id: "welcome",
+    content: `Hi! I'm your AI assistant. I have access to your document${note?.title ? ` "${note.title}"` : ""} and can help you with questions about its content. How can I assist you?`,
+    sender: "ai",
+    timestamp: new Date(),
+  }), [note?.title]);
 
   // Initialize messages with chat history when it loads
   useEffect(() => {
@@ -231,16 +240,9 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       );
     } else {
       // Set default welcome message if no history
-      setMessages([
-        {
-          id: "welcome",
-          content: `Hi! I'm your AI assistant. I have access to your document${note?.title ? ` "${note.title}"` : ""} and can help you with questions about its content. How can I assist you?`,
-          sender: "ai",
-          timestamp: new Date(),
-        },
-      ]);
+      setMessages([getDefaultWelcomeMessage()]);
     }
-  }, [chatHistory, regeneratingMessageId, note?.title]);
+  }, [chatHistory, regeneratingMessageId, getDefaultWelcomeMessage]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -452,6 +454,18 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
     }
   };
 
+  const handleClearChatHistory = async () => {
+    try {
+      // Clear chat history in the database
+      await clearChatHistoryMutation({ noteId });
+      
+      // Reset UI to show only the welcome message
+      setMessages([getDefaultWelcomeMessage()]);
+    } catch (error) {
+      console.error("Failed to clear chat history:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden border-l bg-background border-border">
       {/* Header - fixed at top */}
@@ -465,9 +479,20 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
             </div>
           )}
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <XIcon className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleClearChatHistory}
+            className="text-xs"
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Clear Chat
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <XIcon className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages Area - scrollable with fixed height */}

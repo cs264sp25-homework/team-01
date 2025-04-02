@@ -461,4 +461,35 @@ export const deleteMessagesAfter = mutation({
     
     return { deletedCount: messagesToDelete.length };
   },
+});
+
+// Add this new mutation to delete all chat messages for a note
+export const clearChatHistory = mutation({
+  args: {
+    noteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: 401, message: "Unauthorized" });
+    }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    // Find all messages for this note and user
+    const messagesToDelete = await ctx.db
+      .query("messages")
+      .withIndex("by_user_and_note", (q) => 
+        q.eq("userId", userId).eq("noteId", args.noteId)
+      )
+      .collect();
+    
+    // Delete all the messages
+    for (const msg of messagesToDelete) {
+      await ctx.db.delete(msg._id);
+    }
+    
+    return { deletedCount: messagesToDelete.length };
+  },
 }); 
