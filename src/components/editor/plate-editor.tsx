@@ -9,7 +9,8 @@ import { Plate } from "@udecode/plate/react";
 import { useCreateEditor } from "@/components/editor/use-create-editor";
 import { Editor, EditorContainer } from "@/components/plate-ui/editor";
 import { Button } from "@/components/plate-ui/button";
-import { SaveIcon } from "lucide-react";
+import { SaveIcon, SearchIcon } from "lucide-react";
+import { SearchBar, createSearchHighlightPlugin } from "@/components/editor/search-bar";
 
 // Debounce function to limit how often a function can be called
 function debounce(func: Function, wait: number) {
@@ -45,14 +46,20 @@ export function PlateEditor({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [showSearchBar, setShowSearchBar] = useState(true);
   
   // Parse initialContent if it exists, or use default empty editor state
   const initialValue = initialContent 
     ? JSON.parse(initialContent || "[]")
     : [{ type: "p", children: [{ text: "" }] }];
 
+  // Create editor with all the default plugins, don't override them
   const editor = useCreateEditor({
     value: initialValue,
+    // Don't replace the plugins array, just add the search plugin
+    override: {
+      plugins: (plugins) => [...plugins, createSearchHighlightPlugin()]
+    }
   });
 
   // Function to save content
@@ -112,6 +119,22 @@ export function PlateEditor({
     };
   }, [isDirty, saveContent]);
 
+  // Toggle search bar with keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle search bar with Ctrl+F / Cmd+F
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearchBar(prev => !prev);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full">
@@ -144,9 +167,35 @@ export function PlateEditor({
           </div>
         )}
         <Plate editor={editor} onChange={handleEditorChange}>
-          <EditorContainer>
-            <Editor variant="demo" />
-          </EditorContainer>
+          <div className="relative">
+            {/* Search bar - make sure it's visible and properly styled */}
+            {showSearchBar && (
+              <div className="sticky top-0 z-10 bg-background mb-2 border-b border-gray-200 p-2">
+                <SearchBar />
+              </div>
+            )}
+            
+            {/* Editor */}
+            <EditorContainer>
+              <Editor 
+                placeholder="Type here..."
+                autoFocus
+              />
+            </EditorContainer>
+            
+            {/* Search toggle button - make it more visible */}
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSearchBar(prev => !prev)}
+                title="Search (Ctrl+F)"
+              >
+                <SearchIcon className="h-4 w-4" />
+                {!showSearchBar && <span className="ml-2">Search</span>}
+              </Button>
+            </div>
+          </div>
         </Plate>
       </div>
     </DndProvider>
