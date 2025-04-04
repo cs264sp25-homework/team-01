@@ -55,10 +55,11 @@ export function PlateEditor({
   const [showSearchBar, setShowSearchBar] = useState(true);
   const [isOrganizing, setIsOrganizing] = useState(false);
 
-  // Get the Convex action for organizing notes
+  // Convex action for organizing notes
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
   // Parse initialContent if it exists, or use default empty editor state
+  //TODO: we might need to change this if the intial content is not in this format.. I think this was a previous hacky way of doing it..
   const initialValue = initialContent
     ? JSON.parse(initialContent || "[]")
     : [{ type: "p", children: [{ text: "" }] }];
@@ -161,6 +162,9 @@ export function PlateEditor({
       // Get current content from editor
       const currentContent = JSON.stringify(editor.children);
 
+      //stash the current content in case of failure to pass back in
+      const stashedCurrContent = editor.children;
+
       console.log("Current content:", currentContent);
 
       // Call Convex action to organize notes
@@ -220,6 +224,9 @@ export function PlateEditor({
 
         // Update the editor's children
         editor.children = processedContent;
+
+        //if their is some failute can set editor.children to stashedCurrContent
+        //TODO: figure out proper error handling. this is just my thought for now..
 
         // Properly trigger change handling in the Plate editor
         // @ts-ignore - Using private API
