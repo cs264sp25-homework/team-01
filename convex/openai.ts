@@ -108,8 +108,7 @@ export const organizeNotes = action({
             
             NEVER RETURN A SINGLE OBJECT - ALWAYS RETURN AN ARRAY OF OBJECTS
             DO NOT include markdown like \`\`\`json or \`\`\` - just output the raw JSON array
-            
-            For testing purposes, make sure the last paragraph contains the text "testing last sentence in prompt openai.ts"`
+            `
           },
           { 
             role: "user", 
