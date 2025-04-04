@@ -106,7 +106,7 @@ export function NotePage() {
   return (
     <div className="relative flex flex-col h-screen">
       {/* Header - fixed at top */}
-      <div ref={headerRef} className="w-full bg-white shadow-sm z-20">
+      <div ref={headerRef} className="z-20 w-full bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-2 mx-auto max-w-7xl">
           <div className="flex items-center gap-2">
             <button
@@ -189,7 +189,7 @@ export function NotePage() {
               className="ml-2"
               title="Toggle AI Chat"
             >
-              <MessageCircleIcon className="h-5 w-5" />
+              <MessageCircleIcon className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -200,7 +200,7 @@ export function NotePage() {
         className="flex-1 overflow-hidden" 
         style={{ height: `calc(100vh - ${headerHeight}px)` }}
       >
-        <div className="h-full mx-auto max-w-7xl px-4" ref={resizableRef}>
+        <div className="h-full px-4 mx-auto max-w-7xl" ref={resizableRef}>
           <p className="py-2 text-sm text-gray-500">
             Last edited: {new Date(note.updatedAt).toLocaleString()}
           </p>
@@ -234,7 +234,7 @@ export function NotePage() {
             {/* Chat Panel - conditionally rendered */}
             {chatSidebarOpen && (
               <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
-                <div className="h-full flex-shrink-0">
+                <div className="flex-shrink-0 h-full">
                   <ChatSidebar 
                     onClose={() => setChatSidebarOpen(false)} 
                     noteId={noteId as string}

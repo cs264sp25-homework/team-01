@@ -1,21 +1,20 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
 import {
   BoldPlugin,
   ItalicPlugin,
   StrikethroughPlugin,
   UnderlinePlugin,
-} from '@udecode/plate-basic-marks/react';
+} from "@udecode/plate-basic-marks/react";
 import {
   FontBackgroundColorPlugin,
   FontColorPlugin,
-} from '@udecode/plate-font/react';
+} from "@udecode/plate-font/react";
 
-import { useEditorReadOnly } from '@udecode/plate/react';
+import { useEditorReadOnly } from "@udecode/plate/react";
 import {
-
   BaselineIcon,
   BoldIcon,
   ItalicIcon,
@@ -23,29 +22,27 @@ import {
   StrikethroughIcon,
   UnderlineIcon,
   WandSparklesIcon,
-} from 'lucide-react';
+} from "lucide-react";
 
+import { AIToolbarButton } from "./ai-toolbar-button";
+import { AlignDropdownMenu } from "./align-dropdown-menu";
+import { ColorDropdownMenu } from "./color-dropdown-menu";
 
-
-import { AIToolbarButton } from './ai-toolbar-button';
-import { AlignDropdownMenu } from './align-dropdown-menu';
-import { ColorDropdownMenu } from './color-dropdown-menu';
-
-import { FontSizeToolbarButton } from './font-size-toolbar-button';
-import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
+import { FontSizeToolbarButton } from "./font-size-toolbar-button";
+import { RedoToolbarButton, UndoToolbarButton } from "./history-toolbar-button";
 
 import {
   BulletedIndentListToolbarButton,
   NumberedIndentListToolbarButton,
-} from './indent-list-toolbar-button';
+} from "./indent-list-toolbar-button";
 
-import { IndentToolbarButton } from './indent-toolbar-button';
-import { LineHeightDropdownMenu } from './line-height-dropdown-menu';
-import { MarkToolbarButton } from './mark-toolbar-button';
-import { OutdentToolbarButton } from './outdent-toolbar-button';
-import { ToggleToolbarButton } from './toggle-toolbar-button';
-import { ToolbarGroup } from './toolbar';
-import { TurnIntoDropdownMenu } from './turn-into-dropdown-menu';
+import { IndentToolbarButton } from "./indent-toolbar-button";
+import { LineHeightDropdownMenu } from "./line-height-dropdown-menu";
+import { MarkToolbarButton } from "./mark-toolbar-button";
+import { OutdentToolbarButton } from "./outdent-toolbar-button";
+import { ToggleToolbarButton } from "./toggle-toolbar-button";
+import { ToolbarGroup } from "./toolbar";
+import { TurnIntoDropdownMenu } from "./turn-into-dropdown-menu";
 
 export function FixedToolbarButtons() {
   const readOnly = useEditorReadOnly();
@@ -126,7 +123,6 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
         </>
       )}
-
     </div>
   );
 }
