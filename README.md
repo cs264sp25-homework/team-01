@@ -13,9 +13,11 @@ This project uses the OpenAI API. You need to create an account and get an API k
 ## Deployed Version
 
 You can access the deployed version of Note-AI at:
-REPLACED WITH LINK TO DEPLOYED VERSION
+
+https://cs264sp25-homework.github.io/team-01/signin 
 
 To use the application:
+
 1. Sign in using Github
 2. Create a new note from the dashboard
 3. Use the rich text editor to write and format your notes
@@ -61,4 +63,3 @@ pnpm dev
 ```
 
 This will start the application on http://localhost:5173/team-01/
-
