@@ -27,6 +27,13 @@ export const SearchBar = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Focus input when component mounts
+  useEffect(() => {
+    if (inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, []);
+
   // Find the editor element when component mounts
   useEffect(() => {
     // Delay to ensure editor is mounted
@@ -269,7 +276,7 @@ export const SearchBar = () => {
   }, [handleNext, handlePrevious]);
 
   return (
-    <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
+    <div className="flex items-center space-x-2 bg-white rounded-md">
       <div className="relative flex-1">
         <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
@@ -323,7 +330,7 @@ export const SearchBar = () => {
         <XIcon className="h-4 w-4" />
       </Button>
       {isSearching && (
-        <div className="absolute right-2 top-2 text-sm text-muted-foreground flex items-center">
+        <div className="absolute right-20 top-2 text-sm text-muted-foreground flex items-center">
           <span className="animate-spin mr-1">⟳</span> Searching...
         </div>
       )}

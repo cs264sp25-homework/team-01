@@ -13,11 +13,7 @@ import { Editor, EditorContainer } from "@/components/plate-ui/editor";
 import { Button } from "@/components/plate-ui/button";
 import { SaveIcon, SearchIcon, ListFilterIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
-import {
-  SearchBar,
-  createSearchHighlightPlugin,
-} from "@/components/editor/search-bar";
-import { FixedToolbarButtons } from "@/components/plate-ui/fixed-toolbar-buttons";
+import { SearchBar, createSearchHighlightPlugin } from "@/components/editor/search-bar";
 
 // Debounce function to limit how often a function can be called
 function debounce(func: Function, wait: number) {
@@ -53,7 +49,6 @@ export function PlateEditor({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const [showSearchBar, setShowSearchBar] = useState(true);
   const [isOrganizing, setIsOrganizing] = useState(false);
 
   // Get the Convex action for organizing notes
@@ -134,22 +129,6 @@ export function PlateEditor({
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [isDirty, saveContent]);
-
-  // Toggle search bar with keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle search bar with Ctrl+F / Cmd+F
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        e.preventDefault();
-        setShowSearchBar((prev) => !prev);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   // Function to organize notes
   const organizeNotes = useCallback(async () => {
@@ -256,85 +235,81 @@ export function PlateEditor({
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-[calc(100vh-200px)] overflow-hidden mt-16">
-        {onUpdate && (
-          <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-white border-b">
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => saveContent(true)} // Manual save
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={!isDirty || isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon className="w-4 h-4" />
-                    Save
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={organizeNotes}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={isOrganizing}
-              >
-                {isOrganizing ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Organizing...
-                  </>
-                ) : (
-                  <>
-                    <ListFilterIcon className="w-4 h-4" />
-                    Organize Notes
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {lastSavedAt && (
-              <span className="text-sm text-gray-500">
-                {isAutoSaving
-                  ? "Auto-saving..."
-                  : `Last saved: ${lastSavedAt.toLocaleTimeString()}`}
-              </span>
-            )}
+        {/* App Dashboard with toolbar - both stay together and move with page scroll */}
+        <div className="sticky top-0 z-50 bg-white">
+          {/* Search bar above the buttons */}
+          <div className="p-2 border-b">
+            <SearchBar />
           </div>
-        )}
-        <Plate editor={editor} onChange={handleEditorChange}>
-          <div className="relative h-full overflow-y-auto pt-14">
-            {/* Search bar */}
-            {showSearchBar && (
-              <div className="sticky top-0 z-10 p-2 mb-2 border-b border-gray-200 bg-background">
-                <SearchBar />
+          
+          {/* Top dashboard buttons */}
+          {onUpdate && (
+            <div className="flex items-center justify-between p-2 border-b">
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => saveContent(true)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={!isDirty || isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 animate-spin">◌</span>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <SaveIcon className="w-4 h-4" />
+                      Save
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={organizeNotes}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isOrganizing}
+                >
+                  {isOrganizing ? (
+                    <>
+                      <span className="w-4 h-4 animate-spin">◌</span>
+                      Organizing...
+                    </>
+                  ) : (
+                    <>
+                      <ListFilterIcon className="w-4 h-4" />
+                      Organize Notes
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
 
-            {/* Editor */}
-            <EditorContainer className="pb-24">
-              <Editor placeholder="Type here..." autoFocus />
-            </EditorContainer>
-
-            {/* Search toggle button */}
-            <div className="absolute top-2 right-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSearchBar((prev) => !prev)}
-                title="Search (Ctrl+F)"
-              >
-                <SearchIcon className="w-4 h-4" />
-                {!showSearchBar && <span className="ml-2">Search</span>}
-              </Button>
+              {lastSavedAt && (
+                <span className="text-sm text-gray-500">
+                  {isAutoSaving
+                    ? "Auto-saving..."
+                    : `Last saved: ${lastSavedAt.toLocaleTimeString()}`}
+                </span>
+              )}
             </div>
-          </div>
-        </Plate>
+          )}
+          
+          {/* Toolbar - directly in the dashboard container */}
+          <div id="editor-toolbar-container"></div>
+        </div>
+        
+        {/* Editor content - scrolls independently */}
+        <div className="relative flex-1 overflow-auto">
+          <Plate editor={editor} onChange={handleEditorChange}>
+            <div className="relative h-full">
+              {/* Editor */}
+              <EditorContainer className="pb-24">
+                <Editor placeholder="Type here..." autoFocus />
+              </EditorContainer>
+            </div>
+          </Plate>
+        </div>
       </div>
     </DndProvider>
   );
