@@ -42,8 +42,6 @@ import { MoreDropdownMenu } from '@/components/plate-ui/more-dropdown-menu';
 import { AIToolbarButton } from './ai-toolbar-button';
 import { AlignDropdownMenu } from './align-dropdown-menu';
 import { ColorDropdownMenu } from './color-dropdown-menu';
-import { CommentToolbarButton } from './comment-toolbar-button';
-import { EmojiDropdownMenu } from './emoji-dropdown-menu';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import { InsertDropdownMenu } from './insert-dropdown-menu';
 import { LineHeightDropdownMenu } from './line-height-dropdown-menu';
@@ -51,9 +49,7 @@ import { LinkToolbarButton } from './link-toolbar-button';
 import { ListIndentToolbarButton } from './list-indent-toolbar-button';
 import { ListToolbarButton } from './list-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
-import { MediaToolbarButton } from './media-toolbar-button';
 import { ModeDropdownMenu } from './mode-dropdown-menu';
-import { TableDropdownMenu } from './table-dropdown-menu';
 import { ToggleToolbarButton } from './toggle-toolbar-button';
 import { ToolbarGroup } from './toolbar';
 import { TurnIntoDropdownMenu } from './turn-into-dropdown-menu';
@@ -134,18 +130,6 @@ export function FixedToolbarListButtons() {
             <ToggleToolbarButton />
           </ToolbarGroup>
 
-          <ToolbarGroup>
-            <LinkToolbarButton />
-            <TableDropdownMenu />
-            <EmojiDropdownMenu />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <MediaToolbarButton nodeType={ImagePlugin.key} />
-            <MediaToolbarButton nodeType={VideoPlugin.key} />
-            <MediaToolbarButton nodeType={AudioPlugin.key} />
-            <MediaToolbarButton nodeType={FilePlugin.key} />
-          </ToolbarGroup>
 
           <ToolbarGroup>
             <LineHeightDropdownMenu />
@@ -165,7 +149,6 @@ export function FixedToolbarListButtons() {
         <MarkToolbarButton nodeType={HighlightPlugin.key} tooltip="Highlight">
           <HighlighterIcon />
         </MarkToolbarButton>
-        <CommentToolbarButton />
       </ToolbarGroup>
 
       <ToolbarGroup>

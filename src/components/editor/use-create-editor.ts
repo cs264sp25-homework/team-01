@@ -105,6 +105,7 @@ import { TableElement } from '@/components/plate-ui/table-element';
 import { TableRowElement } from '@/components/plate-ui/table-row-element';
 import { TocElement } from '@/components/plate-ui/toc-element';
 import { ToggleElement } from '@/components/plate-ui/toggle-element';
+import { SearchHighlightLeaf } from '@/components/plate-ui/search-highlight-leaf';
 
 export const viewComponents = {
   [AudioPlugin.key]: MediaAudioElement,
@@ -150,6 +151,7 @@ export const viewComponents = {
   [TogglePlugin.key]: ToggleElement,
   [UnderlinePlugin.key]: withProps(PlateLeaf, { as: 'u' }),
   [VideoPlugin.key]: MediaVideoElement,
+  searchHighlight: SearchHighlightLeaf,
 };
 
 export const editorComponents = {

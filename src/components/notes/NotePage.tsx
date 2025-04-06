@@ -6,9 +6,10 @@ import { SignOut } from "../auth/sign-out";
 import { PlateEditor } from "../editor/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
 import ChatSidebar from "../editor/ChatSidebar";
-import { MessageCircleIcon } from "lucide-react";
+import { MessageCircleIcon, Loader2 } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../components/ui/resizable";
 import { Button } from "../plate-ui/button";
+import { toast } from "react-hot-toast";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -21,7 +22,8 @@ export function NotePage() {
   const renameNote = useMutation(api.notes.rename);
   const deleteNote = useMutation(api.notes.remove);
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(note?.title || "");
+  const [title, setTitle] = useState("");
+  const [isContentSaving, setIsContentSaving] = useState(false);
   
   // Add state for chat sidebar
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
@@ -45,13 +47,34 @@ export function NotePage() {
     };
   }, []);
 
-  const handleUpdateNote = async (content: string) => {
+  // Update title when note data is loaded
+  useEffect(() => {
+    if (note && !isEditing) {
+      setTitle(note.title);
+    }
+  }, [note, isEditing]);
+
+  const handleUpdateNote = async (content: string, isManualSave = false) => {
     if (!note || !noteId) return;
-    await updateNote({
-      id: noteId as Id<"notes">,
-      title: note.title,
-      content,
-    });
+    
+    try {
+      setIsContentSaving(true);
+      await updateNote({
+        id: noteId as Id<"notes">,
+        title: note.title,
+        content,
+      });
+      // Only show toast notification for manual saves
+      if (isManualSave) {
+        toast.success("Note content saved successfully!");
+      }
+    } catch (error) {
+      console.error("Failed to save note content:", error);
+      // Always show errors regardless of save type
+      toast.error("Failed to save note content");
+    } finally {
+      setIsContentSaving(false);
+    }
   };
 
   const handleRename = async () => {
@@ -71,15 +94,11 @@ export function NotePage() {
     }
   };
 
-  // Update local title when note changes
-  if (note && note.title !== title && !isEditing) {
-    setTitle(note.title);
-  }
-
   if (!note) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading...</div>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="w-10 h-10 text-gray-500 animate-spin" />
+        <p className="mt-4 text-lg text-gray-500">Loading note...</p>
       </div>
     );
   }
@@ -87,7 +106,7 @@ export function NotePage() {
   return (
     <div className="relative flex flex-col h-screen">
       {/* Header - fixed at top */}
-      <div ref={headerRef} className="w-full bg-white shadow-sm z-20">
+      <div ref={headerRef} className="z-20 w-full bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-2 mx-auto max-w-7xl">
           <div className="flex items-center gap-2">
             <button
@@ -170,7 +189,7 @@ export function NotePage() {
               className="ml-2"
               title="Toggle AI Chat"
             >
-              <MessageCircleIcon className="h-5 w-5" />
+              <MessageCircleIcon className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -181,7 +200,7 @@ export function NotePage() {
         className="flex-1 overflow-hidden" 
         style={{ height: `calc(100vh - ${headerHeight}px)` }}
       >
-        <div className="h-full mx-auto max-w-7xl px-4" ref={resizableRef}>
+        <div className="h-full px-4 mx-auto max-w-7xl" ref={resizableRef}>
           <p className="py-2 text-sm text-gray-500">
             Last edited: {new Date(note.updatedAt).toLocaleString()}
           </p>
@@ -201,6 +220,8 @@ export function NotePage() {
                 <PlateEditor 
                   initialContent={note.content}
                   onUpdate={handleUpdateNote}
+                  autoSave={true}
+                  isSaving={isContentSaving}
                 />
               </div>
             </ResizablePanel>
@@ -213,7 +234,7 @@ export function NotePage() {
             {/* Chat Panel - conditionally rendered */}
             {chatSidebarOpen && (
               <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
-                <div className="h-full flex-shrink-0">
+                <div className="flex-shrink-0 h-full">
                   <ChatSidebar 
                     onClose={() => setChatSidebarOpen(false)} 
                     noteId={noteId as string}

@@ -9,6 +9,7 @@ import { NotePage } from "./components/notes/NotePage";
 import { Id } from "../convex/_generated/dataModel";
 import "./App.css";
 import { RenameModal } from "./components/notes/RenameModal";
+import { Toaster } from "react-hot-toast";
 
 interface Note {
   _id: Id<"notes">;
@@ -182,12 +183,15 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/signin" element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} />
-      <Route path="/" element={<Navigate to="/team-01" replace />} />
-      <Route path="/team-01" element={isAuthenticated ? <MainContent /> : <Navigate to="/signin" replace />} />
-      <Route path="/notes/:noteId" element={isAuthenticated ? <NotePage /> : <Navigate to="/signin" replace />} />
-    </Routes>
+    <>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/signin" element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} />
+        <Route path="/" element={<Navigate to="/team-01" replace />} />
+        <Route path="/team-01" element={isAuthenticated ? <MainContent /> : <Navigate to="/signin" replace />} />
+        <Route path="/notes/:noteId" element={isAuthenticated ? <NotePage /> : <Navigate to="/signin" replace />} />
+      </Routes>
+    </>
   );
 }
 

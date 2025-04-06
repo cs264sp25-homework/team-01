@@ -14,11 +14,12 @@ export const getChatHistory = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const limit = args.limit ?? 50;
     
@@ -45,11 +46,12 @@ export const storeMessage = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const messageId = await ctx.db.insert("messages", {
       content: args.content,
@@ -73,11 +75,12 @@ export const updateMessage = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     const message = await ctx.db.get(args.messageId);
     if (!message) {
@@ -112,6 +115,8 @@ export const streamingChatResponse = action({
     message: v.string(),
     noteId: v.string(),
     contextMessageCount: v.optional(v.number()),
+    noteTitle: v.optional(v.string()),
+    noteContent: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ messageId: Id<"messages">; content: string }> => {
     const identity = await ctx.auth.getUserIdentity();
@@ -157,12 +162,51 @@ export const streamingChatResponse = action({
         content: msg.content,
       }));
       
+      // Create a system prompt that includes the note title and content
+      let systemPrompt = "You are a helpful AI assistant that helps users with their documents.";
+      
+      // Add note context if provided
+      if (args.noteTitle || args.noteContent) {
+        systemPrompt += "\n\nCurrent document context:";
+        
+        if (args.noteTitle) {
+          systemPrompt += `\nTitle: ${args.noteTitle}`;
+        }
+        
+        if (args.noteContent) {
+          // Parse the note content if it's in JSON format
+          try {
+            const parsedContent = JSON.parse(args.noteContent);
+            // Create a plain text representation of the content
+            let plainTextContent = "";
+            const extractTextFromNodes = (nodes: any[]) => {
+              for (const node of nodes) {
+                if (node.text) {
+                  plainTextContent += node.text + " ";
+                }
+                if (node.children && Array.isArray(node.children)) {
+                  extractTextFromNodes(node.children);
+                }
+              }
+            };
+            
+            extractTextFromNodes(parsedContent);
+            systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
+          } catch (error) {
+            // If parsing fails, use content as is with a length limit
+            systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
+          }
+        }
+        
+        systemPrompt += "\n\nPlease refer to this document content when answering questions about it.";
+      }
+      
       // Use the systemPrompt parameter instead of a system message
       const result = streamText({
         model: openai("gpt-4o"),
         messages: formattedMessages,
         temperature: 0.7,
-        system: "You are a helpful AI assistant that helps users with their documents."
+        system: systemPrompt
       });
       
       let fullResponse = "";
@@ -223,6 +267,8 @@ export const regenerateStreamingResponse = action({
     messageId: v.id("messages"),
     noteId: v.string(),
     contextMessageCount: v.optional(v.number()),
+    noteTitle: v.optional(v.string()),
+    noteContent: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -280,12 +326,51 @@ export const regenerateStreamingResponse = action({
         content: msg.content,
       }));
       
+      // Create a system prompt that includes the note title and content
+      let systemPrompt = "You are a helpful AI assistant that helps users with their documents.";
+      
+      // Add note context if provided
+      if (args.noteTitle || args.noteContent) {
+        systemPrompt += "\n\nCurrent document context:";
+        
+        if (args.noteTitle) {
+          systemPrompt += `\nTitle: ${args.noteTitle}`;
+        }
+        
+        if (args.noteContent) {
+          // Parse the note content if it's in JSON format
+          try {
+            const parsedContent = JSON.parse(args.noteContent);
+            // Create a plain text representation of the content
+            let plainTextContent = "";
+            const extractTextFromNodes = (nodes: any[]) => {
+              for (const node of nodes) {
+                if (node.text) {
+                  plainTextContent += node.text + " ";
+                }
+                if (node.children && Array.isArray(node.children)) {
+                  extractTextFromNodes(node.children);
+                }
+              }
+            };
+            
+            extractTextFromNodes(parsedContent);
+            systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
+          } catch (error) {
+            // If parsing fails, use content as is with a length limit
+            systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
+          }
+        }
+        
+        systemPrompt += "\n\nPlease refer to this document content when answering questions about it.";
+      }
+      
       // Use the systemPrompt parameter instead of a system message
       const result = streamText({
         model: openai("gpt-4o"),
         messages: formattedMessages,
         temperature: 0.7,
-        system: "You are a helpful AI assistant that helps users with their documents."
+        system: systemPrompt
       });
       
       let fullResponse = "";
@@ -347,11 +432,12 @@ export const deleteMessagesAfter = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
-    
-    if (!userId) {
+    if (!identity) {
       throw new ConvexError({ code: 401, message: "Unauthorized" });
     }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
     
     // Get the message to find its timestamp
     const message = await ctx.db.get(args.messageId);
@@ -366,6 +452,37 @@ export const deleteMessagesAfter = mutation({
         q.eq("userId", userId).eq("noteId", args.noteId)
       )
       .filter((q) => q.gt(q.field("timestamp"), message.timestamp))
+      .collect();
+    
+    // Delete all the messages
+    for (const msg of messagesToDelete) {
+      await ctx.db.delete(msg._id);
+    }
+    
+    return { deletedCount: messagesToDelete.length };
+  },
+});
+
+// Add this new mutation to delete all chat messages for a note
+export const clearChatHistory = mutation({
+  args: {
+    noteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({ code: 401, message: "Unauthorized" });
+    }
+    
+    // Extract userId the same way as in notes.ts
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    // Find all messages for this note and user
+    const messagesToDelete = await ctx.db
+      .query("messages")
+      .withIndex("by_user_and_note", (q) => 
+        q.eq("userId", userId).eq("noteId", args.noteId)
+      )
       .collect();
     
     // Delete all the messages

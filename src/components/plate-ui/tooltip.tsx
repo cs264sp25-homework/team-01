@@ -45,23 +45,29 @@ type TooltipProps<T extends React.ElementType> = {
 } & React.ComponentProps<T>;
 
 export function withTooltip<T extends React.ElementType>(Component: T) {
-  return function ExtendComponent({
-    delayDuration = 0,
-    disableHoverableContent = true,
-    skipDelayDuration = 0,
-    tooltip,
-    tooltipContentProps,
-    tooltipProps,
-    tooltipTriggerProps,
-    ...props
-  }: TooltipProps<T>) {
+  return React.forwardRef<
+    React.ElementRef<T>,
+    TooltipProps<T>
+  >(function ExtendComponent(
+    {
+      delayDuration = 0,
+      disableHoverableContent = true,
+      skipDelayDuration = 0,
+      tooltip,
+      tooltipContentProps,
+      tooltipProps,
+      tooltipTriggerProps,
+      ...props
+    },
+    ref
+  ) {
     const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
       setMounted(true);
     }, []);
 
-    const component = <Component {...(props as React.ComponentProps<T>)} />;
+    const component = <Component ref={ref} {...(props as React.ComponentProps<T>)} />;
 
     if (tooltip && mounted) {
       return (
@@ -86,7 +92,7 @@ export function withTooltip<T extends React.ElementType>(Component: T) {
     }
 
     return component;
-  };
+  });
 }
 
 export const TooltipButton = withTooltip(Button);
