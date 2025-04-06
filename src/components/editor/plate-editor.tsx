@@ -17,6 +17,7 @@ import {
   SearchBar,
   createSearchHighlightPlugin,
 } from "@/components/editor/search-bar";
+import { FixedToolbarButtons } from "@/components/plate-ui/fixed-toolbar-buttons";
 
 // Debounce function to limit how often a function can be called
 function debounce(func: Function, wait: number) {
@@ -254,7 +255,7 @@ export function PlateEditor({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-[calc(100vh-200px)] overflow-hidden mt-16">
         {onUpdate && (
           <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-white border-b">
             <div className="flex items-center gap-2">
@@ -307,8 +308,8 @@ export function PlateEditor({
           </div>
         )}
         <Plate editor={editor} onChange={handleEditorChange}>
-          <div className="relative">
-            {/* Search bar - make sure it's visible and properly styled */}
+          <div className="relative h-full overflow-y-auto pt-14">
+            {/* Search bar */}
             {showSearchBar && (
               <div className="sticky top-0 z-10 p-2 mb-2 border-b border-gray-200 bg-background">
                 <SearchBar />
@@ -316,11 +317,11 @@ export function PlateEditor({
             )}
 
             {/* Editor */}
-            <EditorContainer>
+            <EditorContainer className="pb-24">
               <Editor placeholder="Type here..." autoFocus />
             </EditorContainer>
 
-            {/* Search toggle button - make it more visible */}
+            {/* Search toggle button */}
             <div className="absolute top-2 right-2">
               <Button
                 variant="outline"

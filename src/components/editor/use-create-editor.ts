@@ -187,7 +187,6 @@ export const useCreateEditor = (
       plugins: [
         ...copilotPlugins,
         ...editorPlugins,
-        FixedToolbarPlugin,
         FloatingToolbarPlugin,
       ],
       //maybe can somehow return this from json convex call
