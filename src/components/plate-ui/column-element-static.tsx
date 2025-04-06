@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 
 import type { SlateElementProps } from '@udecode/plate';
 import type { TColumnElement } from '@udecode/plate-layout';
