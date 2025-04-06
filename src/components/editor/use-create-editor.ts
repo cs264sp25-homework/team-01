@@ -34,6 +34,7 @@ import {
   EquationPlugin,
   InlineEquationPlugin,
 } from '@udecode/plate-math/react';
+
 import {
   AudioPlugin,
   FilePlugin,
