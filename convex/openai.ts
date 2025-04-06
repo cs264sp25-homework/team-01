@@ -26,6 +26,7 @@ export const organizeNotes = action({
       const notes = JSON.parse(args.content);
       
       // Make a standard OpenAI API call
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -118,8 +119,9 @@ export const organizeNotes = action({
         ],
         temperature: 0.2,
         max_tokens: 4000
-        // Removed response_format to allow array response
       });
+
+      console.log("Completion.....:", completion);
       
       // Get the response content
       let organizedContent = completion.choices[0].message.content?.trim() || "[]";
@@ -206,3 +208,5 @@ export const organizeNotes = action({
     }
   },
 });
+
+
