@@ -8,7 +8,7 @@ export const organizeNotes = action({
   args: {
     content: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_, args) => {
     
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

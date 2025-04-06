@@ -163,7 +163,7 @@ export function PlateEditor({
       const currentContent = JSON.stringify(editor.children);
 
       //stash the current content in case of failure to pass back in
-      const stashedCurrContent = editor.children;
+      // const stashedCurrContent = editor.children;
 
       console.log("Current content:", currentContent);
 
