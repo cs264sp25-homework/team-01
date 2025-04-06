@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+// import React from 'react';
 
 import {
   BoldPlugin,
@@ -18,12 +18,7 @@ import {
   BulletedListPlugin,
   NumberedListPlugin,
 } from '@udecode/plate-list/react';
-import {
-  AudioPlugin,
-  FilePlugin,
-  ImagePlugin,
-  VideoPlugin,
-} from '@udecode/plate-media/react';
+
 import { useEditorReadOnly } from '@udecode/plate/react';
 import {
   BaselineIcon,
@@ -45,7 +40,6 @@ import { ColorDropdownMenu } from './color-dropdown-menu';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import { InsertDropdownMenu } from './insert-dropdown-menu';
 import { LineHeightDropdownMenu } from './line-height-dropdown-menu';
-import { LinkToolbarButton } from './link-toolbar-button';
 import { ListIndentToolbarButton } from './list-indent-toolbar-button';
 import { ListToolbarButton } from './list-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';

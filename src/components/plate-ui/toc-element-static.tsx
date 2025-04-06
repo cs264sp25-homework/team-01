@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 
 import type { SlateEditor, SlateElementProps, TElement } from '@udecode/plate';
 
