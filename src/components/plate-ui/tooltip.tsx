@@ -46,7 +46,7 @@ type TooltipProps<T extends React.ElementType> = {
 
 export function withTooltip<T extends React.ElementType>(Component: T) {
   return React.forwardRef<
-    React.ElementRef<T>,
+    any,
     TooltipProps<T>
   >(function ExtendComponent(
     {
@@ -67,7 +67,7 @@ export function withTooltip<T extends React.ElementType>(Component: T) {
       setMounted(true);
     }, []);
 
-    const component = <Component ref={ref} {...(props as React.ComponentProps<T>)} />;
+    const component = <Component ref={ref} {...(props as any)} />;
 
     if (tooltip && mounted) {
       return (
