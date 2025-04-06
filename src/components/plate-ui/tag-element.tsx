@@ -7,7 +7,7 @@ import {
   useReadOnly,
   useSelected,
 } from '@udecode/plate/react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 export const TagElement = withRef<typeof PlateElement>(
   ({ children, className, ...props }, ref) => {
@@ -31,7 +31,7 @@ export const TagElement = withRef<typeof PlateElement>(
 
     const content =
       readOnly && element.url ? (
-        <Link href={element.url as string}>{badge}</Link>
+        <Link to={element.url as string}>{badge}</Link>
       ) : (
         badge
       );

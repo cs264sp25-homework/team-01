@@ -214,7 +214,7 @@ export const completeText = action({
   args: {
     prompt: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_, args) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new ConvexError({
