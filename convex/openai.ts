@@ -63,7 +63,7 @@ export const organizeNotes = action({
             {"children":[{"text":"Formula","bold":true},{"text":": If you have a composite function ( y = f(g(x)) ), the chain rule states that the derivative ( \\frac{dy}{dx} ) is the product of the derivative of the outer function evaluated at the inner function and the derivative of the inner function: ( \\frac{dy}{dx} = f'(g(x)) \\cdot g'(x) )."}],"indent":1,"listStyleType":"decimal","type":"p","listStart":2,"id":"Z-AlDS3Fbt"},
             {"children":[{"text":"Application in Layers","bold":true},{"text":": In deep learning, the chain rule is applied layer by layer for backpropagation, allowing the calculation of gradients of the loss function with respect to network parameters."}],"indent":1,"listStyleType":"decimal","type":"p","listStart":3,"id":"liRvM7OqFk"},{"children":[{"text":"Backward Flow","bold":true},{"text":": It facilitates the flow of error gradients backward through the network, from output to input, which is crucial for adjusting the weights during training."}],"indent":1,"listStyleType":"decimal","type":"p","listStart":4,"id":"-mLrrP7-71"},{"children":[{"text":"Recursive Process","bold":true},{"text":": The chain rule is applied recursively as you move from the output layer to the input layer, updating each weight based on the gradient computed"}],"indent":1,"listStyleType":"decimal","type":"p","listStart":5,"id":"gR4Y49nffw"},
             {"type":"p","children":[{"text":""}],"id":"test-1743726027217"},{"type":"p","children":[{"text":""}],"id":"test-1743779275158"},{"type":"p","children":[{"text":"testing last sentence in prompt openai.ts"}],"id":"test-1743779304909"},
-            {"type":"p","id":"GT7ve7IUnM","children":[{"text":"Gradient Descent "}],"align":"left"},{"type":"p","id":"IfMziuEr3K","align":"left","children":[{"text":"If you try to take the derivative of the cross-entropy loss above, set it to zero, and solve for w, you will find that you cannot isolate w to one side of the equation, meaning that the optimization problem has no ‘closed-form’ solution. Instead we need to find a numerical solution that will only approximate the true optimum. We will use a procedure known as ‘gradient descent’, a.k.a. ‘steepest descent’. The intuition is that we’ll start with an initial guess at the value of w and slowly walk down the loss surface, following the direction of steepest descent according to the derivative at our current point. For a generic function 12 ϕ(z) that we wish to minimize, we can apply gradient descent by iterating the gradient descent equatoin"}]},{"type":"p","id":"JVTE4Qltup","align":"left","children":[{"text":"Why is gradient descent useful?"}]},{"type":"p","id":"6Ii_utsjBT","align":"left","children":[{"text":"optimization "}],"indent":1,"listStyleType":"disc"},
+            {"type":"p","id":"GT7ve7IUnM","children":[{"text":"Gradient Descent "}],"align":"left"},{"type":"p","id":"IfMziuEr3K","align":"left","children":[{"text":"If you try to take the derivative of the cross-entropy loss above, set it to zero, and solve for w, you will find that you cannot isolate w to one side of the equation, meaning that the optimization problem has no 'closed-form' solution. Instead we need to find a numerical solution that will only approximate the true optimum. We will use a procedure known as 'gradient descent', a.k.a. 'steepest descent'. The intuition is that we'll start with an initial guess at the value of w and slowly walk down the loss surface, following the direction of steepest descent according to the derivative at our current point. For a generic function 12 ϕ(z) that we wish to minimize, we can apply gradient descent by iterating the gradient descent equatoin"}]},{"type":"p","id":"JVTE4Qltup","align":"left","children":[{"text":"Why is gradient descent useful?"}]},{"type":"p","id":"6Ii_utsjBT","align":"left","children":[{"text":"optimization "}],"indent":1,"listStyleType":"disc"},
             {"type":"p","id":"cLz6RH1qEU","align":"left","indent":1,"listStyleType":"disc","children":[{"text":"scalability "}],"listStart":2},{"type":"p","id":"SmjNjpoBkL","align":"left","indent":1,"listStyleType":"disc","listStart":3,"children":[{"text":"iterative improvement "}]},
             {"type":"p","id":"-tSEqK2DkS","align":"left","indent":1,"listStyleType":"disc","listStart":4,"children":[{"text":"flexibility "}]},
             {"type":"p","id":"7MyPW1DgO0","align":"left","children":[{"text":""}]},
@@ -90,7 +90,7 @@ export const organizeNotes = action({
 
                     example of a bulleted list with sub-bullets:
                     {"type":"p","id":"6Ii_utsjBT","align":"left","children":[{"text":"optimization"}],"indent":1,"listStyleType":"disc"},
-                    {"type":"p","id":"0NQjCPLdmn","align":"left","indent":2,"listStyleType":"disc","children":[{"text":"Gradient descent helps find the minimum of a loss function, which corresponds to the optimal parameters for a model. By minimizing the loss, the model\'s predictions become more accurate."}]},
+                    {"type":"p","id":"0NQjCPLdmn","align":"left","indent":2,"listStyleType":"disc","children":[{"text":"Gradient descent helps find the minimum of a loss function, which corresponds to the optimal parameters for a model. By minimizing the loss, the model's predictions become more accurate."}]},
                     {"type":"p","id":"cLz6RH1qEU","align":"left","indent":1,"listStyleType":"disc","children":[{"text":"scalability "}],"listStart":2},
                     {"type":"p","id":"jxOf4WbPMi","align":"left","indent":2,"listStyleType":"disc","children":[{"text":"gradient descent is efficient and scalable for large datasets and complex models, making it suitable for deep learning applicationa where datasets can be large and models have milions of paramaters"}]},
                     {"type":"p","id":"SmjNjpoBkL","align":"left","indent":1,"listStyleType":"disc","listStart":3,"children":[{"text":"iterative improvement "}]},
@@ -204,6 +204,55 @@ export const organizeNotes = action({
       throw new ConvexError({
         code: 500,
         message: "Failed to organize notes",
+      });
+    }
+  },
+});
+
+// Add text completion action for the copilot plugin
+export const completeText = action({
+  args: {
+    prompt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new ConvexError({
+        code: 500,
+        message: "OpenAI API key not configured"
+      });
+    }
+
+    try {
+      // Initialize OpenAI client
+      const openai = new OpenAI({ apiKey });
+
+      // Generate completion with OpenAI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are an advanced AI writing assistant. Continue the text naturally up to the next punctuation mark. Keep it concise and maintain the style and tone.",
+          },
+          {
+            role: "user",
+            content: `Continue this text: "${args.prompt}"`,
+          },
+        ],
+        max_tokens: 50,
+        temperature: 0.7,
+      });
+
+      // Return the completion
+      return {
+        text: completion.choices[0].message.content?.trim() || "",
+      };
+    } catch (error) {
+      console.error("Error in completeText action:", error);
+      throw new ConvexError({
+        code: 500,
+        message: "Failed to generate text completion",
       });
     }
   },

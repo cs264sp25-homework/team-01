@@ -3,14 +3,18 @@
 import type { TElement } from "@udecode/plate";
 import { CopilotPlugin } from "@udecode/plate-ai/react";
 import { serializeMdNodes, stripMarkdown } from "@udecode/plate-markdown";
-import OpenAI from "openai";
+
+import { ConvexReactClient } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 import { GhostText } from "@/components/plate-ui/ghost-text";
 
-//need to change this with convex api.. can do vercel ai here or move idk..
+// Initialize Convex client
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL || "");
 
+//need to change this with convex api.. can do vercel ai here or move idk..
 export const copilotPlugins = [
-  CopilotPlugin.configure(({ api }) => ({
+  CopilotPlugin.configure(({ api: editorApi }) => ({
     options: {
       completeOptions: {
         api: "/api/non-existent-endpoint", // Purposely use a non-existent endpoint to trigger onError
@@ -28,60 +32,37 @@ export const copilotPlugins = [
   - If no context is provided or you can't generate a continuation, return "0" without explanation.`,
         },
         onError: async () => {
-          // Use OpenAI to generate text when API fails
           try {
-            // Initialize OpenAI client with environment variable
-            const openai = new OpenAI({
-              apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
-              dangerouslyAllowBrowser: true, // Allow usage in browser
-            });
-
             // Get current context from editor
-            const contextEntry = api.block({ highest: true });
+            const contextEntry = editorApi.block({ highest: true });
             let prompt = "";
 
             if (contextEntry) {
               prompt = serializeMdNodes([contextEntry[0] as TElement]);
             }
 
-            // Generate completion with OpenAI
-            const completion = await openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "You are an advanced AI writing assistant. Continue the text naturally up to the next punctuation mark. Keep it concise and maintain the style and tone.",
-                },
-                {
-                  role: "user",
-                  content: `Continue this text: "${prompt}"`,
-                },
-              ],
-              max_tokens: 50,
-              temperature: 0.7,
+            // Call Convex action for text completion
+            const result = await convex.action(api.openai.completeText, {
+              prompt,
             });
 
             // Set the completion as the suggestion
-            const generatedText =
-              completion.choices[0].message.content?.trim() || "";
-
-            api.copilot.setBlockSuggestion({
-              text: stripMarkdown(generatedText),
+            editorApi.copilot.setBlockSuggestion({
+              text: stripMarkdown(result.text),
             });
           } catch (error) {
-            console.error("Error using OpenAI:", error);
+            console.error("Error calling Convex action:", error);
 
-            // Fallback to faker if OpenAI fails
-            api.copilot.setBlockSuggestion({
-              text: "some open ai issue rn..",
+            // Fallback if the action fails
+            editorApi.copilot.setBlockSuggestion({
+              text: "Failed to generate suggestion...",
             });
           }
         },
         onFinish: (_, completion) => {
           if (completion === "0") return;
 
-          api.copilot.setBlockSuggestion({
+          editorApi.copilot.setBlockSuggestion({
             text: stripMarkdown(completion),
           });
         },
