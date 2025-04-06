@@ -39,7 +39,6 @@ import {
   FilePlugin,
   ImagePlugin,
   MediaEmbedPlugin,
-  PlaceholderPlugin,
   VideoPlugin,
 } from '@udecode/plate-media/react';
 import {
@@ -137,7 +136,6 @@ export const viewComponents = {
   [MediaEmbedPlugin.key]: MediaEmbedElement,
   [MentionPlugin.key]: MentionElement,
   [ParagraphPlugin.key]: ParagraphElement,
-  [PlaceholderPlugin.key]: MediaPlaceholderElement,
   [StrikethroughPlugin.key]: withProps(PlateLeaf, { as: 's' }),
   [SubscriptPlugin.key]: withProps(PlateLeaf, { as: 'sub' }),
   [SuggestionPlugin.key]: SuggestionLeaf,
