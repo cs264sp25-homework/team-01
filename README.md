@@ -1,34 +1,64 @@
 # Note-AI
 
-A sophisticated note taking application that combines traditional document editing capabilities with AI-powered features to enhance the note-taking, studying and writing experience.
+Note-AI is a sophisticated note-taking application that combines traditional document editing capabilities with AI-powered features to enhance the note-taking, studying, and writing experience. Our application enables users to create, organize, and edit notes efficiently, while leveraging AI capabilities to generate content, organize information, and provide personalized assistance.
 
-## Installing / Getting started
+## Convex
 
-A quick introduction of the minimal setup you need to get the app up & running on a local computer. For example, your advisor might use the instruction here to run the application locally.
+This project uses [Convex](https://convex.dev/) for the backend. You need to create a free account to run the application locally.
 
-```shell
+## OpenAI API
+
+This project uses the OpenAI API. You need to create an account and get an API key to use the API. Consult the [quick start guide](https://platform.openai.com/docs/quickstart) for instructions.
+
+## Deployed Version
+
+You can access the deployed version of Note-AI at:
+REPLACED WITH LINK TO DEPLOYED VERSION
+
+To use the application:
+1. Sign in using Github
+2. Create a new note from the dashboard
+3. Use the rich text editor to write and format your notes
+4. Access AI features through the chat sidebar (click the message icon in the top right)
+5. Use AI to help organize your notes, generate content, or answer questions about your material
+
+## Run Locally
+
 To run the application locally:
-1. Clone the repository and go to the root directory
-2. Run pnpm install to install dependencies
-3. Run npx convex dev to start the Convex development server
-4. In another terminal run pnpm dev to start the application 
-5. This will start the application on http://localhost:5173/team-01/
+
+Clone the repository, open a terminal and navigate to the root directory of the repository. Then, install the dependencies:
+
+```bash
+pnpm install
 ```
 
-## Developing
+Next, start the Convex development server:
 
-Detailed and step-by-step documentation for setting up local development. For example, a new team member will use these instructions to start developing the project further.
-
-```shell
-commands here
+```bash
+npx convex dev
 ```
 
-You should include what is needed (e.g. all of the configurations) to set up the dev environment. For instance, global dependencies or any other tools (include download links), explaining what database (and version) has been used, etc. If there is any virtual environment, local server, ..., explain here.
+The first time you run the command, you will be asked to log into your Convex account. Follow the instructions in the terminal. It will also ask you to create a new project. You can use the default settings.
 
-Additionally, describe and show how to run the tests, explain your code style and show how to check it.
+Once the development server is running, you will see a `.env.local` file in the project root. Don't modify this file directly. Don't commit this file to the repository either.
 
-If your project needs some additional steps for the developer to build the project after some code changes, state them here. Moreover, give instructions on how to build and release a new version. In case there's some step you have to take that publishes this project to a server, it must be stated here.
+At this point, you need to set you OpenAI API key. Run the following command:
 
-## Licensing
+```bash
+npx convex env set OPENAI_API_KEY sk-...
+```
 
-Refer to the [Project Repository License](./LICENSE.md) for information on how the project is licensed.
+This needs to be done only once. The API key will be stored on the Convex server and will be used every time you run the development server. From this point on, you can start the Convex development server with the following command:
+
+```bash
+npx convex dev
+```
+
+Finally, run the following command to start the frontend development server.
+
+```bash
+pnpm dev
+```
+
+This will start the application on http://localhost:5173/team-01/
+
