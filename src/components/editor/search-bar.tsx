@@ -5,14 +5,10 @@ import { Input } from '@/components/plate-ui/input';
 import { Button } from '@/components/plate-ui/button';
 import { SearchIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from 'lucide-react';
 import { createPlatePlugin } from '@udecode/plate/react';
-import { SearchHighlightLeaf } from '@/components/plate-ui/search-highlight-leaf';
 
 // Create a plugin to handle search highlighting
 const createSearchHighlightPlugin = () => createPlatePlugin({
   key: 'searchHighlight',
-  options: {
-    renderLeaf: SearchHighlightLeaf
-  },
 });
 
 export { createSearchHighlightPlugin };
