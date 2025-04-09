@@ -3,7 +3,7 @@
 import { cn, withRef } from '@udecode/cn';
 import { PlateElement, useReadOnly } from '@udecode/plate/react';
 
-import { Calendar } from './calendar';
+import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 export const DateElement = withRef<typeof PlateElement>(

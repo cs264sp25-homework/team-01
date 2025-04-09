@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { Button } from "../plate-ui/button";
+import { Button } from "../ui/button";
 import { XIcon, BookOpen, CheckCircle, RefreshCw } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -7,6 +6,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Slider } from "../ui/slider";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Checkbox } from "../ui/checkbox";
+import { useState } from "react";
 
 type TestGeneratorSidebarProps = {
   onClose: () => void;

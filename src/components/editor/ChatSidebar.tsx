@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "../plate-ui/button";
+import { Button } from "../ui/button";
 import {
   Copy,
   Edit,
@@ -11,7 +11,7 @@ import {
   BotMessageSquare,
   Paperclip,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "../plate-ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { cn } from "../../lib/utils";
 import { Textarea } from "../ui/textarea";
 import { useMutation, useQuery, useAction } from "convex/react";

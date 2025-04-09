@@ -52,13 +52,13 @@ import { CheckIcon, XIcon } from 'lucide-react';
 
 import { suggestionPlugin } from '@/components/editor/plugins/suggestion-plugin';
 
-import { Avatar, AvatarFallback, AvatarImage } from './avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   type TDiscussion,
   discussionStore,
   useFakeUserInfo,
 } from './block-discussion';
-import { Button } from './button';
+import { Button } from '../ui/button';
 import { type TComment, Comment, formatCommentDate } from './comment';
 import { CommentCreateForm } from './comment-create-form';
 

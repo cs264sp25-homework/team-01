@@ -20,7 +20,7 @@ import {
 } from '@udecode/plate/react';
 import { Link, Trash2Icon } from 'lucide-react';
 
-import { Button, buttonVariants } from './button';
+import { Button, buttonVariants } from '../ui/button';
 import { CaptionButton } from './caption';
 import { inputVariants } from './input';
 import { Popover, PopoverAnchor, PopoverContent } from './popover';

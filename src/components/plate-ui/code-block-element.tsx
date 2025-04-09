@@ -8,7 +8,7 @@ import { formatCodeBlock, isLangSupported } from '@udecode/plate-code-block';
 import { PlateElement } from '@udecode/plate/react';
 import { BracesIcon, CheckIcon, CopyIcon } from 'lucide-react';
 
-import { Button } from './button';
+import { Button } from '../ui/button';
 import { CodeBlockCombobox } from './code-block-combobox';
 
 export const CodeBlockElement = withRef<typeof PlateElement>(

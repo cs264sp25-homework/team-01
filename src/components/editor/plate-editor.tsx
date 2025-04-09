@@ -9,7 +9,7 @@ import { useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCreateEditor } from '@/components/editor/use-create-editor';
 import { Editor, EditorContainer } from '@/components/plate-ui/editor';
-import { Button } from '@/components/plate-ui/button';
+import { Button } from '@/components/ui/button';
 import { SaveIcon, SearchIcon, ListFilterIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { SearchBar, createSearchHighlightPlugin } from '@/components/editor/search-bar';

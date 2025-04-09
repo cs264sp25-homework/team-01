@@ -9,7 +9,7 @@ import {
 } from '@udecode/plate-font/react';
 import { PlusIcon } from 'lucide-react';
 
-import { buttonVariants } from './button';
+import { buttonVariants } from '../ui/button';
 import {
   type TColor,
   ColorDropdownMenuItems,

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/plate-ui/input';
-import { Button } from '@/components/plate-ui/button';
+import { Button } from '@/components/ui/button';
 import { SearchIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from 'lucide-react';
 import { createSearchHighlightPlugin, searchHighlight } from '@/components/editor/plugins/searchHighlightPlugin';
 

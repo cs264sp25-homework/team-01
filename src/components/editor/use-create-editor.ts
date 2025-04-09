@@ -94,7 +94,7 @@ import { MentionElement } from '@/components/plate-ui/mention-element';
 import { MentionInputElement } from '@/components/plate-ui/mention-input-element';
 import { ParagraphElement } from '@/components/plate-ui/paragraph-element';
 import { withPlaceholders } from '@/components/plate-ui/placeholder';
-import { SlashInputElement } from '@/components/plate-ui/slash-input-element';
+import { SlashInputElement } from '@/components/ui/slash-input-element';
 import { SuggestionLeaf } from '@/components/plate-ui/suggestion-leaf';
 import {
   TableCellElement,

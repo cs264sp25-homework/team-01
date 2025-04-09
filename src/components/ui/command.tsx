@@ -20,8 +20,8 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from './dialog';
-import { inputVariants } from './input';
+} from '../plate-ui/dialog';
+import { inputVariants } from '../plate-ui/input';
 
 const commandVariants = cva(
   'flex size-full flex-col rounded-md bg-popover text-popover-foreground focus-visible:outline-hidden',

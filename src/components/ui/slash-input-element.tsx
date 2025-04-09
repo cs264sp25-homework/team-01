@@ -51,7 +51,7 @@ import {
   InlineComboboxGroupLabel,
   InlineComboboxInput,
   InlineComboboxItem,
-} from './inline-combobox';
+} from '../plate-ui/inline-combobox';
 
 type Group = {
   group: string;
@@ -86,7 +86,7 @@ const groups: Group[] = [
         focusEditor: false,
         icon: <BookOpenIcon />,
         value: 'TestGenerator',
-        onSelect: (editor) => {
+        onSelect: () => {
           const event = new CustomEvent('showTestGenerator', {
             detail: { noteId: window.location.pathname.split('/').pop() }
           });

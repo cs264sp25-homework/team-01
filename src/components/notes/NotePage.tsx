@@ -8,7 +8,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import ChatSidebar from "../editor/ChatSidebar";
 import { MessageCircleIcon, Loader2 } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../components/ui/resizable";
-import { Button } from "../plate-ui/button";
+import { Button } from "../ui/button";
 import { toast } from "react-hot-toast";
 import TestGeneratorSidebar from "../editor/TestGeneratorSidebar";
 import { BookOpenIcon } from "lucide-react";
@@ -71,7 +71,7 @@ export function NotePage() {
 
   // Listen for custom event to show test generator
   useEffect(() => {
-    const handleShowTestGenerator = (event: CustomEvent) => {
+    const handleShowTestGenerator = () => {
       setActiveSidebar("test");
     };
 

@@ -17,7 +17,7 @@ import {
 } from '@udecode/plate/react';
 import { GripHorizontal } from 'lucide-react';
 
-import { Button } from './button';
+import { Button } from '../ui/button';
 import {
   Tooltip,
   TooltipContent,

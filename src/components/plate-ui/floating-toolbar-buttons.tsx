@@ -17,10 +17,9 @@ import {
   WandSparklesIcon,
   BookOpenIcon,
 } from 'lucide-react';
-import { useEditorRef } from '@udecode/plate/react';
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
-import { Button } from '../plate-ui/button';
+import { Button } from '../ui/button';
 import { X } from 'lucide-react';
 
 import { AIToolbarButton } from './ai-toolbar-button';
@@ -37,7 +36,6 @@ import { Id } from '../../../convex/_generated/dataModel';
 export function FloatingToolbarButtons() {
   const readOnly = useEditorReadOnly();
   const [testGeneratorOpen, setTestGeneratorOpen] = useState(false);
-  const editor = useEditorRef();
   const { noteId } = useParams();
 
   return (

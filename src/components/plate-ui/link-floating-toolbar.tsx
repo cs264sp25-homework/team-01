@@ -20,7 +20,7 @@ import {
 import { useFormInputProps } from '@udecode/plate/react';
 import { ExternalLink, Link, Text, Unlink } from 'lucide-react';
 
-import { buttonVariants } from './button';
+import { buttonVariants } from '../ui/button';
 import { inputVariants } from './input';
 import { popoverVariants } from './popover';
 import { Separator } from './separator';

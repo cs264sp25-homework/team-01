@@ -36,7 +36,7 @@ import {
   commentsPlugin,
 } from '@/components/editor/plugins/comments-plugin';
 import { suggestionPlugin } from '@/components/editor/plugins/suggestion-plugin';
-import { Button } from '@/components/plate-ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverAnchor,

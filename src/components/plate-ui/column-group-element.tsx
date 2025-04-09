@@ -14,7 +14,7 @@ import {
 } from '@udecode/plate/react';
 import { type LucideProps, Trash2Icon } from 'lucide-react';
 
-import { Button } from './button';
+import { Button } from '../ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from './popover';
 import { Separator } from './separator';
 

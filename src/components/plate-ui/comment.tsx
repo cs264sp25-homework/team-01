@@ -21,13 +21,13 @@ import {
   XIcon,
 } from 'lucide-react';
 
-import { Avatar, AvatarFallback, AvatarImage } from './avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   discussionStore,
   useFakeCurrentUserId,
   useFakeUserInfo,
 } from './block-discussion';
-import { Button } from './button';
+import { Button } from '../ui/button';
 import { useCommentEditor } from './comment-create-form';
 import {
   DropdownMenu,

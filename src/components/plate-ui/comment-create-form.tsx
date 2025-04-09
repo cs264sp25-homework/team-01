@@ -31,7 +31,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@/components/plate-ui/avatar';
+} from '@/components/ui/avatar';
 
 import type { TDiscussion } from './block-discussion';
 import type { TComment } from './comment';
@@ -42,7 +42,7 @@ import {
   useFakeCurrentUserId,
   useFakeUserInfo,
 } from './block-discussion';
-import { Button } from './button';
+import { Button } from '../ui/button';
 import { DateElement } from './date-element';
 import { Editor, EditorContainer } from './editor';
 import { EmojiInputElement } from './emoji-input-element';

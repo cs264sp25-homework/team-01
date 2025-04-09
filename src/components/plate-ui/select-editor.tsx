@@ -20,7 +20,7 @@ import {
 import { Fzf } from 'fzf';
 import { PlusIcon } from 'lucide-react';
 
-import { Command, CommandGroup, CommandItem, CommandList } from './command';
+import { Command, CommandGroup, CommandItem, CommandList } from '../ui/command';
 import { Editor, EditorContainer } from './editor';
 import { Popover, PopoverAnchor, PopoverContent } from './popover';
 import { TagElement } from './tag-element';

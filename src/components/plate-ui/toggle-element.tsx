@@ -8,7 +8,7 @@ import {
 import { PlateElement, useElement } from '@udecode/plate/react';
 import { ChevronRight } from 'lucide-react';
 
-import { Button } from './button';
+import { Button } from '../ui/button';
 
 export const ToggleElement = withRef<typeof PlateElement>(
   ({ children, className, ...props }, ref) => {

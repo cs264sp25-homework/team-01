@@ -23,7 +23,7 @@ import { useChat } from '@/components/editor/use-chat';
 
 import { AIChatEditor } from './ai-chat-editor';
 import { AIMenuItems } from './ai-menu-items';
-import { Command, CommandList, InputCommand } from './command';
+import { Command, CommandList, InputCommand } from '../ui/command';
 import { Popover, PopoverAnchor, PopoverContent } from './popover';
 
 export function AIMenu() {
