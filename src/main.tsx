@@ -9,11 +9,10 @@ import { BrowserRouter } from "react-router-dom"
 // Initialize the Convex client
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL || "");
 
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConvexAuthProvider client={convex}>
-      <BrowserRouter basename="/team-01">
+      <BrowserRouter>
         <App />
       </BrowserRouter>
     </ConvexAuthProvider>

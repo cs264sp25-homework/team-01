@@ -182,14 +182,34 @@ function App() {
     );
   }
 
+  // Helper function to handle authentication redirects
+  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+    return isAuthenticated ? <>{children}</> : <Navigate to="/team-01/signin" replace />;
+  };
+
   return (
     <>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/signin" element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} />
+        {/* Root redirects */}
         <Route path="/" element={<Navigate to="/team-01" replace />} />
-        <Route path="/team-01" element={isAuthenticated ? <MainContent /> : <Navigate to="/signin" replace />} />
-        <Route path="/notes/:noteId" element={isAuthenticated ? <NotePage /> : <Navigate to="/signin" replace />} />
+        
+        {/* Sign-in routes */}
+        <Route path="/signin" element={<Navigate to="/team-01/signin" replace />} />
+        <Route 
+          path="/team-01/signin" 
+          element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} 
+        />
+        
+        {/* Main content routes */}
+        <Route path="/team-01" element={<ProtectedRoute><MainContent /></ProtectedRoute>} />
+        
+        {/* Note routes - handle both with and without team-01 prefix */}
+        <Route path="/notes/:noteId" element={<Navigate to={location.pathname.replace('/notes/', '/team-01/notes/')} replace />} />
+        <Route path="/team-01/notes/:noteId" element={<ProtectedRoute><NotePage /></ProtectedRoute>} />
+        
+        {/* Catch-all route for any unmatched paths */}
+        <Route path="*" element={<Navigate to="/team-01" replace />} />
       </Routes>
     </>
   );
