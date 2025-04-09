@@ -10,6 +10,8 @@ import { MessageCircleIcon, Loader2 } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../components/ui/resizable";
 import { Button } from "../plate-ui/button";
 import { toast } from "react-hot-toast";
+import TestGeneratorSidebar from "../editor/TestGeneratorSidebar";
+import { BookOpenIcon } from "lucide-react";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -25,11 +27,24 @@ export function NotePage() {
   const [title, setTitle] = useState("");
   const [isContentSaving, setIsContentSaving] = useState(false);
   
-  // Add state for chat sidebar
-  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
+  // Sidebar states
+  const [activeSidebar, setActiveSidebar] = useState<"chat" | "test" | null>(null);
   const resizableRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(64); // Default height
+
+  // Toggle sidebar functions
+  const toggleChatSidebar = () => {
+    setActiveSidebar(activeSidebar === "chat" ? null : "chat");
+  };
+
+  const toggleTestSidebar = () => {
+    setActiveSidebar(activeSidebar === "test" ? null : "test");
+  };
+
+  const closeSidebars = () => {
+    setActiveSidebar(null);
+  };
 
   // Measure header height on mount and resize
   useEffect(() => {
@@ -53,6 +68,19 @@ export function NotePage() {
       setTitle(note.title);
     }
   }, [note, isEditing]);
+
+  // Listen for custom event to show test generator
+  useEffect(() => {
+    const handleShowTestGenerator = (event: CustomEvent) => {
+      setActiveSidebar("test");
+    };
+
+    window.addEventListener('showTestGenerator', handleShowTestGenerator as EventListener);
+
+    return () => {
+      window.removeEventListener('showTestGenerator', handleShowTestGenerator as EventListener);
+    };
+  }, []);
 
   const handleUpdateNote = async (content: string, isManualSave = false) => {
     if (!note || !noteId) return;
@@ -104,7 +132,7 @@ export function NotePage() {
   }
 
   return (
-    <div className="relative flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header - fixed at top */}
       <div ref={headerRef} className="z-20 w-full bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-2 mx-auto max-w-7xl">
@@ -181,15 +209,26 @@ export function NotePage() {
               </svg>
             </button>
             
-            {/* Add AI Chat Toggle Button */}
+            {/* AI Chat Toggle Button */}
             <Button 
-              variant="ghost" 
+              variant={activeSidebar === "chat" ? "default" : "ghost"}
               size="icon" 
-              onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+              onClick={toggleChatSidebar}
               className="ml-2"
               title="Toggle AI Chat"
             >
               <MessageCircleIcon className="w-5 h-5" />
+            </Button>
+            
+            {/* Test Generator Toggle Button */}
+            <Button 
+              variant={activeSidebar === "test" ? "default" : "ghost"}
+              size="icon" 
+              onClick={toggleTestSidebar}
+              className="ml-2"
+              title="Generate Test Questions"
+            >
+              <BookOpenIcon className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -212,11 +251,11 @@ export function NotePage() {
           >
             {/* Editor Panel */}
             <ResizablePanel 
-              defaultSize={chatSidebarOpen ? 60 : 100} 
+              defaultSize={activeSidebar ? 60 : 100} 
               minSize={30}
               className="transition-all duration-200"
             >
-              <div className="h-full overflow-auto">
+              <div className="h-full overflow-auto border border-gray-200 rounded-md">
                 <PlateEditor 
                   initialContent={note.content}
                   onUpdate={handleUpdateNote}
@@ -226,19 +265,26 @@ export function NotePage() {
               </div>
             </ResizablePanel>
 
-            {/* Resizable Handle - only shown when chat is open */}
-            {chatSidebarOpen && (
+            {/* Resizable Handle - only shown when a sidebar is open */}
+            {activeSidebar && (
               <ResizableHandle withHandle />
             )}
 
-            {/* Chat Panel - conditionally rendered */}
-            {chatSidebarOpen && (
+            {/* Sidebar Panel - conditionally rendered based on active sidebar */}
+            {activeSidebar && (
               <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
-                <div className="flex-shrink-0 h-full">
-                  <ChatSidebar 
-                    onClose={() => setChatSidebarOpen(false)} 
-                    noteId={noteId as string}
-                  />
+                <div className="flex-shrink-0 h-full border border-gray-200 rounded-md">
+                  {activeSidebar === "chat" ? (
+                    <ChatSidebar 
+                      onClose={closeSidebars} 
+                      noteId={noteId as string}
+                    />
+                  ) : (
+                    <TestGeneratorSidebar 
+                      onClose={closeSidebars} 
+                      noteId={noteId as Id<"notes">} 
+                    />
+                  )}
                 </div>
               </ResizablePanel>
             )}

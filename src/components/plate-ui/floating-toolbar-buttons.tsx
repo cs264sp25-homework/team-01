@@ -15,7 +15,13 @@ import {
   StrikethroughIcon,
   UnderlineIcon,
   WandSparklesIcon,
+  BookOpenIcon,
 } from 'lucide-react';
+import { useEditorRef } from '@udecode/plate/react';
+import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Button } from '../plate-ui/button';
+import { X } from 'lucide-react';
 
 import { AIToolbarButton } from './ai-toolbar-button';
 import { InlineEquationToolbarButton } from './inline-equation-toolbar-button';
@@ -23,11 +29,16 @@ import { LinkToolbarButton } from './link-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
 import { MoreDropdownMenu } from './more-dropdown-menu';
 import { SuggestionToolbarButton } from './suggestion-toolbar-button';
-import { ToolbarGroup } from './toolbar';
+import { ToolbarButton, ToolbarGroup } from './toolbar';
 import { TurnIntoDropdownMenu } from './turn-into-dropdown-menu';
+import TestGeneratorSidebar from '../editor/TestGeneratorSidebar';
+import { Id } from '../../../convex/_generated/dataModel';
 
 export function FloatingToolbarButtons() {
   const readOnly = useEditorReadOnly();
+  const [testGeneratorOpen, setTestGeneratorOpen] = useState(false);
+  const editor = useEditorRef();
+  const { noteId } = useParams();
 
   return (
     <>
@@ -38,6 +49,14 @@ export function FloatingToolbarButtons() {
               <WandSparklesIcon />
               Ask AI
             </AIToolbarButton>
+            
+            <ToolbarButton 
+              tooltip="Generate Test Questions"
+              onClick={() => setTestGeneratorOpen(true)}
+            >
+              <BookOpenIcon />
+              Test Generator
+            </ToolbarButton>
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -81,6 +100,25 @@ export function FloatingToolbarButtons() {
 
         {!readOnly && <MoreDropdownMenu />}
       </ToolbarGroup>
+
+      {testGeneratorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg w-[500px] max-h-[80vh] overflow-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="text-lg font-medium">Generate Test Questions</h2>
+              <Button variant="ghost" size="sm" onClick={() => setTestGeneratorOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <TestGeneratorSidebar 
+                onClose={() => setTestGeneratorOpen(false)} 
+                noteId={noteId as Id<"notes">} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
