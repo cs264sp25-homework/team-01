@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { SignIn } from "./components/auth/sign-in";
-import { SignOut } from "./components/auth/sign-out";
+import { SignIn } from "./auth/components/sign-in";
+import { SignOut } from "./auth/components/sign-out";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { CreateNoteModal } from "./components/notes/CreateNoteModal";
-import { NotePage } from "./components/notes/NotePage";
+import { CreateNoteModal } from "./notes/components/CreateNoteModal";
+import { NotePage } from "./notes/components/NotePage";
 import { Id } from "../convex/_generated/dataModel";
 import "./App.css";
-import { RenameModal } from "./components/notes/RenameModal";
+import { RenameModal } from "./notes/components/RenameModal";
 import { Toaster } from "react-hot-toast";
 
 interface Note {
