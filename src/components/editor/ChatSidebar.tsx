@@ -470,8 +470,8 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
     <div className="flex flex-col h-full overflow-hidden border-l bg-background border-border">
       {/* Header - fixed at top */}
       <div className="flex items-center justify-between flex-shrink-0 p-4 border-b bg-muted/30">
-        <div className="flex flex-col">
-          <h3 className="text-lg font-semibold">AI Assistant</h3>
+        <div className="flex flex-col text-left">
+          <h3 className="text-lg font-semibold">Note Assistant</h3>
           {note && (
             <div className="flex items-center mt-1 text-xs text-muted-foreground">
               <span className="inline-block w-2 h-2 mr-2 bg-green-500 rounded-full"></span>

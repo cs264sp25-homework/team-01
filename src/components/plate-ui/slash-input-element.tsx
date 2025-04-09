@@ -35,6 +35,7 @@ import {
   Square,
   Table,
   TableOfContentsIcon,
+  BookOpenIcon,
 } from 'lucide-react';
 
 import {
@@ -79,6 +80,17 @@ const groups: Group[] = [
         value: 'AI',
         onSelect: (editor) => {
           editor.getApi(AIChatPlugin).aiChat.show();
+        },
+      },
+      {
+        focusEditor: false,
+        icon: <BookOpenIcon />,
+        value: 'TestGenerator',
+        onSelect: (editor) => {
+          const event = new CustomEvent('showTestGenerator', {
+            detail: { noteId: window.location.pathname.split('/').pop() }
+          });
+          window.dispatchEvent(event);
         },
       },
     ],
