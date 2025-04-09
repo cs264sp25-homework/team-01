@@ -24,8 +24,8 @@ export function CreateNoteModal({ isOpen, onClose, onCreate }: CreateNoteModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-xs p-6 bg-white rounded-lg">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-50">
+      <div className="w-full max-w-xs p-6 bg-white rounded-lg shadow-lg">
         <h2 className="mb-4 text-xl font-semibold">Create New Note</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
