@@ -157,14 +157,18 @@ As a User, I want to:
 
 1. Text summarization for complex topics or large text (Secondary feature #1)
    - Users can highlight text and ask for it to be explained simply.
+   - inside the ASK AI highlight toolbar
 2. Users can ask for the AI to expand upon certain areas of their notes
    - ie add a sub bullet underneath a bullet explaining something
+   - inside the ask AI highlight toolbar
 3. Fix spelling and grammar, shorten, lengthen, paraphrase
 4. Concept Map Generation: (Secondary feature #3)
    - AI extracts key ideas from notes, connecting different topics in a concise paragraph
 5. Generate mock test questions (secondary feature #4)
    - Exam format selection (mcq/short answer)
    - Generate mock test questions based on the note content
+6. Chunking and Embedding pipeline for context needed for AI features
+7. Implement copilot plugin from scratch
 
 #### Deliverables:
 
@@ -179,6 +183,9 @@ As a User, I want to:
 
 1. Ability to share with friends via email - this would be a read-only view of the document with the option to create your own copy in our application (tertiary feature (#1)
 2. Save notes as PDF to desktop (tertiary feature #2)
+3. Search for text in all notes 
+4. Left align text by default 
+5. Update the chatbot to also pass in semantically searched relevent content from other notes not just the current open note
 
 #### Deliverables:
 
