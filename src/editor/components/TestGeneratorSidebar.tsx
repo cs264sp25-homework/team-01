@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { XIcon, BookOpen, CheckCircle, RefreshCw } from "lucide-react";
+import { XIcon, BookOpen, CheckCircle, RefreshCw, BookOpenText } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -8,22 +8,60 @@ import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
 import { useState } from "react";
 
+// Define the TypeScript interfaces for the test generator
+interface MCQQuestion {
+  type: "mcq";
+  question: string;
+  options: string[];
+  answer: string;
+  source?: string;
+}
+
+interface ShortAnswerQuestion {
+  type: "shortAnswer";
+  question: string;
+  answer: string;
+  source?: string;
+}
+
+interface TrueFalseQuestion {
+  type: "trueFalse";
+  question: string;
+  answer: "True" | "False";
+  source?: string;
+}
+
+interface FillInBlankQuestion {
+  type: "fillInBlank";
+  question: string;
+  answer: string;
+  source?: string;
+}
+
+type GeneratedQuestion = MCQQuestion | ShortAnswerQuestion | TrueFalseQuestion | FillInBlankQuestion;
+
+interface GeneratedTest {
+  questions: GeneratedQuestion[];
+}
+
 type TestGeneratorSidebarProps = {
   onClose: () => void;
   noteId: Id<"notes">;
+  navigateToText?: (text: string) => void;
 };
 
-export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorSidebarProps) {
+export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }: TestGeneratorSidebarProps) {
   // State for test generation options
   const [numQuestions, setNumQuestions] = useState(5);
   const [questionTypes, setQuestionTypes] = useState({
     mcq: true,
     shortAnswer: false,
     trueFalse: false,
+    fillInBlank: false,
   });
   const [difficulty, setDifficulty] = useState("medium");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedTest, setGeneratedTest] = useState<any>(null);
+  const [generatedTest, setGeneratedTest] = useState<GeneratedTest | null>(null);
   const [showAnswers, setShowAnswers] = useState(true);
   const [userAnswers, setUserAnswers] = useState<Record<number, string | null>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -44,7 +82,7 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
           difficulty,
         },
       });
-      setGeneratedTest(result);
+      setGeneratedTest(result as GeneratedTest);
     } catch (error) {
       console.error("Error generating test:", error);
     } finally {
@@ -83,10 +121,28 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
              (optionIndex >= 0 && question.answer === question.options[optionIndex]);
     } else if (question.type === "trueFalse") {
       return question.answer.toLowerCase() === userAnswer.toLowerCase();
+    } else if (question.type === "fillInBlank") {
+      // Simple case-insensitive comparison for fill-in-blank
+      return question.answer.toLowerCase().trim() === userAnswer.toLowerCase().trim();
     }
     
     // For short answer, we don't grade
     return null;
+  };
+
+  // Add this function to handle retaking the test
+  const handleRetakeTest = () => {
+    // Reset user answers and submission state but keep the same test
+    setUserAnswers({});
+    setIsSubmitted(false);
+  };
+
+  // Function to navigate to the source of a question in the notes
+  const handleNavigateToSource = (source: string | undefined) => {
+    if (!source || !navigateToText) return;
+    
+    // Navigate to the source text in the notes
+    navigateToText(source);
   };
 
   return (
@@ -161,6 +217,18 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
                       True/False
                     </label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="fillInBlank"
+                      checked={questionTypes.fillInBlank}
+                      onCheckedChange={(checked) =>
+                        setQuestionTypes({ ...questionTypes, fillInBlank: !!checked })
+                      }
+                    />
+                    <label htmlFor="fillInBlank" className="text-sm" style={{textAlign: 'left'}}>
+                      Fill in the Blank
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -219,7 +287,7 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
             </div>
             
             <div className="space-y-4">
-              {generatedTest.questions.map((question: any, index: number) => (
+              {generatedTest.questions.map((question: GeneratedQuestion, index: number) => (
                 <div key={index} className="p-3 border rounded-md bg-muted/20" style={{textAlign: 'left'}}>
                   <p className="font-medium mb-2" style={{textAlign: 'left'}}>Q{index + 1}: {question.question}</p>
                   
@@ -319,6 +387,54 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
                       )}
                     </div>
                   )}
+                  
+                  {question.type === "fillInBlank" && (
+                    <div className="space-y-2 ml-2" style={{textAlign: 'left'}}>
+                      {!showAnswers && (
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded-md text-sm"
+                          placeholder="Type your answer here..."
+                          value={userAnswers[index] || ""}
+                          onChange={(e) => handleUserAnswer(index, e.target.value)}
+                          disabled={isSubmitted}
+                        />
+                      )}
+                      
+                      {(showAnswers || isSubmitted) && (
+                        <div className="mt-2 pt-2 border-t text-sm text-green-600" style={{textAlign: 'left'}}>
+                          <span className="font-medium">Answer:</span> {question.answer}
+                        </div>
+                      )}
+                      
+                      {isSubmitted && userAnswers[index] && (
+                        <div className={`mt-2 text-sm ${isAnswerCorrect(index) ? "text-green-600" : "text-red-600"}`}>
+                          <span className="font-medium">Your answer:</span> {userAnswers[index]}
+                          {isAnswerCorrect(index) && <CheckCircle className="w-4 h-4 ml-1 inline text-green-600" />}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Source navigation button - show after submission or when answers are shown */}
+                  {(showAnswers || isSubmitted) && question.source && navigateToText && (
+                    <div className="mt-3 ml-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs"
+                        onClick={() => handleNavigateToSource(question.source)}
+                      >
+                        <BookOpenText className="w-3 h-3 mr-1" />
+                        Find in Notes
+                      </Button>
+                      {showAnswers && (
+                        <div className="mt-2 text-xs text-muted-foreground italic">
+                          Source: "{question.source}"
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -372,14 +488,24 @@ export default function TestGeneratorSidebar({ onClose, noteId }: TestGeneratorS
               {" "}of{" "}
               {generatedTest.questions.filter(q => q.type !== "shortAnswer").length} correct
             </p>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={handleNewTest}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Create New Test
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant="secondary" 
+                className="flex-1"
+                onClick={handleRetakeTest}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retake Test
+              </Button>
+              <Button 
+                variant="default" 
+                className="flex-1"
+                onClick={handleNewTest}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                New Test
+              </Button>
+            </div>
           </div>
         ) : (
           <Button 

@@ -44,6 +44,9 @@ export const generateTest = action({
             1. If it's a multiple-choice question (mcq), provide 4 options and indicate the correct answer.
             2. If it's a short answer question, provide the expected answer.
             3. If it's a true/false question, indicate whether the statement is true or false.
+            4. If it's a fill-in-the-blank question (fillInBlank), provide a sentence with a blank and the word that should fill the blank.
+            
+            Additionally, for each question, include a "source" field that contains a direct quote from the notes (10-30 words) that the question is based on. This will help users locate where the information came from.
             
             Return your response as a JSON object with the following structure:
             {
@@ -52,17 +55,26 @@ export const generateTest = action({
                   "type": "mcq",
                   "question": "Question text",
                   "options": ["Option A", "Option B", "Option C", "Option D"],
-                  "answer": "Option A"
+                  "answer": "Option A",
+                  "source": "Direct quote from notes that contains the answer"
                 },
                 {
                   "type": "shortAnswer",
                   "question": "Question text",
-                  "answer": "Expected answer"
+                  "answer": "Expected answer",
+                  "source": "Direct quote from notes that contains the answer"
                 },
                 {
                   "type": "trueFalse",
                   "question": "Statement",
-                  "answer": "True" or "False"
+                  "answer": "True" or "False",
+                  "source": "Direct quote from notes that contains the answer"
+                },
+                {
+                  "type": "fillInBlank",
+                  "question": "Sentence with _____ to fill in.",
+                  "answer": "word",
+                  "source": "Direct quote from notes that contains the answer"
                 }
               ]
             }
