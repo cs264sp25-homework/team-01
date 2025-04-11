@@ -417,7 +417,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                   )}
                   
                   {/* Source navigation button - show after submission or when answers are shown */}
-                  {(showAnswers || isSubmitted) && question.source && navigateToText && (
+                  {(showAnswers || isSubmitted) && question.source && (
                     <div className="mt-3 ml-2">
                       <Button 
                         variant="outline" 
@@ -428,11 +428,9 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                         <BookOpenText className="w-3 h-3 mr-1" />
                         Find in Notes
                       </Button>
-                      {showAnswers && (
-                        <div className="mt-2 text-xs text-muted-foreground italic">
-                          Source: "{question.source}"
-                        </div>
-                      )}
+                      <div className="mt-2 text-xs text-muted-foreground italic p-2 border-l-2 border-muted">
+                        <span className="font-medium">Source:</span> "{question.source}"
+                      </div>
                     </div>
                   )}
                 </div>
