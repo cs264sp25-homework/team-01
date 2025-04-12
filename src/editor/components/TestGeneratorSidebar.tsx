@@ -6,7 +6,8 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Slider } from "@/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { searchHighlight } from "@/editor/plugins/searchHighlightPlugin";
 
 // Define the TypeScript interfaces for the test generator
 interface MCQQuestion {
@@ -136,6 +137,19 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     setUserAnswers({});
     setIsSubmitted(false);
   };
+
+  // Add this useEffect to clear highlights when component unmounts
+  useEffect(() => {
+    // Return cleanup function that will run when component unmounts
+    return () => {
+      // Find the editor element
+      const editorEl = document.querySelector('[data-slate-editor="true"]') as HTMLElement;
+      if (editorEl) {
+        // Clear any existing highlights
+        searchHighlight.clear(editorEl);
+      }
+    };
+  }, []);
 
   // Function to navigate to the source of a question in the notes
   const handleNavigateToSource = (source: string | undefined) => {
