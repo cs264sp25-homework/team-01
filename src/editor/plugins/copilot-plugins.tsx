@@ -42,14 +42,27 @@ export const copilotPlugin = createPlatePlugin({
   },
 });
 
-// Extend the plugin with our custom behavior
+/**
+ * Custom type definition for our keyboard handler
+ * 
+ * This is needed because Plate's DOMHandler type doesn't exactly match our implementation.
+ * We're defining our own handler signature to match how we actually use it.
+ */
+type CopilotKeyHandler = (editor: any, event: any) => boolean;
+
+/**
+ * Extends the Plate plugin with custom behavior
+ * 
+ * Note: We use type assertions (as unknown as CopilotKeyHandler) to bridge the gap
+ * between Plate's expected types and our custom implementation. This allows us to
+ * create custom keyboard behaviors.
+ */
 const initializeCopilot = () => {
   const originalPlugin = copilotPlugin;
   
   // Add keyboard handlers to trigger AI suggestions
-  // @ts-ignore - We need to augment the plugin with custom handlers
   originalPlugin.handlers = {
-    onKeyDown: (editor, event) => {
+    onKeyDown: ((editor: any, event: any) => {
       const plateEditor = editor as any;
       
       // Initialize the editor if needed
@@ -90,8 +103,8 @@ const initializeCopilot = () => {
       
       // Let other key handlers process the event
       return false;
-    }
-  };
+    }) as unknown as CopilotKeyHandler
+  } as any; // Cast the entire handlers object to 'any' to satisfy TypeScript
   
   // Add our initialization function to the plugin
   // @ts-ignore - We need to augment the plugin with withOverrides
@@ -310,11 +323,7 @@ HOW THIS CODE WORKS WITH OPENAI:
    - The plugin receives the AI-generated text and shows it as ghost text
    - User can accept it with Tab or incrementally with Cmd+Right
 
-2. ADDING TO YOUR EDITOR:
-   - Import the array: import { copilotPlugins } from '@/editor/plugins/copilot-plugins';
-   - Add to your plugins: const plugins = [...otherPlugins, ...copilotPlugins];
-
-3. KEYBOARD SHORTCUTS:
+2. KEYBOARD SHORTCUTS:
    - Ctrl+Space: Generate AI suggestion
    - Tab: Accept entire suggestion
    - Cmd/Ctrl+Right Arrow: Accept one word at a time
