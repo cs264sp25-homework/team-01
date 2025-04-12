@@ -304,7 +304,7 @@ HOW THIS CODE WORKS WITH OPENAI:
 1. INTEGRATION FLOW:
    - User presses Ctrl+Space in the editor
    - The plugin extracts the current text content
-   - Text is sent to Convex backend via api.openai.completeText (line ~138)
+   - Text is sent to Convex backend via api.openai.completeText 
    - In convex/openai.ts, the backend calls OpenAI's API with this text
    - OpenAI generates a completion that is sent back through Convex
    - The plugin receives the AI-generated text and shows it as ghost text
