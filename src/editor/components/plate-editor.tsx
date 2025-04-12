@@ -10,9 +10,19 @@ import { api } from '../../../convex/_generated/api';
 import { useCreateEditor } from '@/editor/hooks/use-create-editor';
 import { Editor, EditorContainer } from '@/plate-ui/editor';
 import { Button } from '@/ui/button';
-import { SaveIcon, SearchIcon, ListFilterIcon } from 'lucide-react';
+import { SaveIcon, SearchIcon, ListFilterIcon, FileDownIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { SearchBar, createSearchHighlightPlugin } from '@/editor/components/search-bar';
+import { jsPDF } from 'jspdf';
+import { 
+  Dialog,
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/plate-ui/dialog';
+import { Input } from '@/plate-ui/input';
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
@@ -45,6 +55,9 @@ export function PlateEditor({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(true);
   const [isOrganizing, setIsOrganizing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [pdfFileName, setPdfFileName] = useState("notes");
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
@@ -152,6 +165,220 @@ export function PlateEditor({
     }
   }, [editor, handleEditorChange, organizeNotesAction]);
 
+  const handleExportButtonClick = useCallback(() => {
+    setPdfFileName("notes");
+    setShowExportDialog(true);
+  }, []);
+
+  const handleExportDialogClose = useCallback(() => {
+    setShowExportDialog(false);
+  }, []);
+
+  const exportToPDF = useCallback(async () => {
+    try {
+      setIsExporting(true);
+      setShowExportDialog(false);
+      toast.loading("Exporting to PDF...", { id: "export-pdf" });
+      
+      // Debug: Log the editor structure to console
+      console.log("Editor structure:", JSON.stringify(editor.children, null, 2));
+      
+      // Create new PDF document
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Set up initial position and line height
+      const margin = 20;
+      let yPos = margin;
+      const lineHeight = 7;
+      const pageHeight = doc.internal.pageSize.height;
+      const maxWidth = doc.internal.pageSize.width - (margin * 2);
+      let listCounters: { [key: number]: number } = {};
+
+      // Convert color from any format to RGB
+      const parseColor = (color: string) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { r: 0, g: 0, b: 0 };
+        
+        ctx.fillStyle = color;
+        const rgb = ctx.fillStyle;
+        const match = rgb.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+        
+        if (match) {
+          return {
+            r: parseInt(match[1], 16),
+            g: parseInt(match[2], 16),
+            b: parseInt(match[3], 16)
+          };
+        }
+        return { r: 0, g: 0, b: 0 };
+      };
+
+      // Function to process text nodes with styling
+      const processTextNode = (node: any) => {
+        let text = node.text || '';
+        const decorations: ((x: number, width: number) => void)[] = [];
+        
+        // Handle text styling
+        const fontStyle = [];
+        if (node.bold) fontStyle.push('bold');
+        if (node.italic) fontStyle.push('italic');
+        doc.setFont(undefined, fontStyle.length ? fontStyle.join('-') : 'normal');
+
+        // Handle text color
+        if (node.color) {
+          try {
+            const { r, g, b } = parseColor(node.color);
+            doc.setTextColor(r, g, b);
+          } catch (e) {
+            console.warn('Color parsing failed:', e);
+            doc.setTextColor(0, 0, 0);
+          }
+        }
+
+        // Handle font size
+        if (node.fontSize) {
+          const ptSize = parseFloat(node.fontSize) * 0.75;
+          doc.setFontSize(ptSize);
+        }
+
+        // Handle underline and strikethrough
+        if (node.underline) {
+          decorations.push((x: number, width: number) => {
+            doc.line(x, yPos + 1, x + width, yPos + 1);
+          });
+        }
+
+        if (node.strikethrough) {
+          decorations.push((x: number, width: number) => {
+            doc.line(x, yPos - 2, x + width, yPos - 2);
+          });
+        }
+
+        return { text, decorations };
+      };
+
+      // Function to process a node and its children
+      const processNode = (node: any, level: number = 0) => {
+        // Debug: Log node type and properties
+        console.log("Processing node:", node.type, node);
+        
+        // Reset styles for new block
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+
+        let indent = margin + (level * 10);
+        
+        // Handle different node types depending on Plate's structure
+        if (node.type === 'p' && node.indent && node.indent > 0) {
+          // This is likely a list item from IndentListPlugin
+          console.log("Found list item with indent:", node.indent, "listStyleType:", node.listStyleType);
+          
+          // Determine if it's a numbered list or bullet list
+          const isNumbered = node.listStyleType === 'decimal' || node.listStyleType === 'number';
+          
+          // Set indent based on the indent level
+          indent = margin + (node.indent * 10);
+          
+          // Generate appropriate marker
+          let marker = '';
+          if (isNumbered) {
+            // For numbered lists
+            listCounters[node.indent] = (listCounters[node.indent] || 0) + 1;
+            marker = `${listCounters[node.indent]}. `;
+          } else {
+            // For bullet points
+            marker = '• ';
+          }
+          
+          // Draw the marker
+          doc.text(marker, indent - 10, yPos);
+          indent += 5; // Add space after marker
+        }
+        
+        // Continue with normal node processing
+        if (node.children) {
+          let currentText = '';
+          let currentDecorations: Function[] = [];
+
+          node.children.forEach((child: any) => {
+            if (typeof child === 'string') {
+              currentText += child;
+            } else if (child.type) {
+              // Process structured child node recursively
+              if (currentText) {
+                // Render accumulated text before processing child
+                const textWidth = maxWidth - (indent - margin);
+                const lines = doc.splitTextToSize(currentText, textWidth);
+                lines.forEach(line => {
+                  if (yPos > pageHeight - margin) {
+                    doc.addPage();
+                    yPos = margin;
+                  }
+                  doc.text(line, indent, yPos);
+                  currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+                  yPos += lineHeight;
+                });
+                currentText = '';
+                currentDecorations = [];
+              }
+              
+              // Process child node
+              processNode(child, level + 1);
+            } else {
+              // Process text node with styling
+              const processed = processTextNode(child);
+              currentText += processed.text;
+              currentDecorations = [...currentDecorations, ...processed.decorations];
+            }
+          });
+
+          // Render any remaining text
+          if (currentText) {
+            const textWidth = maxWidth - (indent - margin);
+            const lines = doc.splitTextToSize(currentText, textWidth);
+            lines.forEach(line => {
+              if (yPos > pageHeight - margin) {
+                doc.addPage();
+                yPos = margin;
+              }
+              doc.text(line, indent, yPos);
+              currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+              yPos += lineHeight;
+            });
+          }
+        }
+
+        // Add spacing after blocks
+        if (node.type === 'p') {
+          yPos += lineHeight / 2;
+        }
+      };
+
+      // Process the document
+      editor.children.forEach(node => processNode(node));
+
+      // Save the PDF with the custom name
+      doc.save(`${pdfFileName}.pdf`);
+      toast.success("PDF exported successfully!", { id: "export-pdf" });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export PDF",
+        { id: "export-pdf" }
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [editor, pdfFileName]);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full">
@@ -194,6 +421,24 @@ export function PlateEditor({
                   </>
                 )}
               </Button>
+              <Button
+                onClick={handleExportButtonClick}
+                variant="outline"
+                className="flex items-center gap-2"
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <span className="w-4 h-4 animate-spin">◌</span>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FileDownIcon className="w-4 h-4" />
+                    Export PDF
+                  </>
+                )}
+              </Button>
             </div>
             {lastSavedAt && (
               <span className="text-sm text-gray-500">
@@ -220,7 +465,38 @@ export function PlateEditor({
             </div>
           </div>
         </Plate>
+
+        {/* PDF Export Dialog */}
+        <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Export PDF</DialogTitle>
+              <DialogDescription>
+                Enter a name for your PDF file.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                id="pdf-filename"
+                value={pdfFileName}
+                onChange={(e) => setPdfFileName(e.target.value)}
+                placeholder="Enter file name"
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleExportDialogClose}>
+                Cancel
+              </Button>
+              <Button onClick={exportToPDF} disabled={!pdfFileName.trim()}>
+                Export
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DndProvider>
   );
 }
+
