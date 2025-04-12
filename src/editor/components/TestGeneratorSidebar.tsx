@@ -141,7 +141,17 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const handleNavigateToSource = (source: string | undefined) => {
     if (!source || !navigateToText) return;
     
-    // Navigate to the source text in the notes
+    // Add a visual indicator that the button was clicked
+    const button = document.activeElement as HTMLElement;
+    if (button) {
+      const originalBg = button.style.backgroundColor;
+      button.style.backgroundColor = '#4CAF50';
+      setTimeout(() => {
+        button.style.backgroundColor = originalBg;
+      }, 300);
+    }
+    
+    // Call the navigateToText function with the source text
     navigateToText(source);
   };
 
