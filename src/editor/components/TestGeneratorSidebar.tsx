@@ -63,7 +63,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
         options: {
           numQuestions,
           types: Object.entries(questionTypes)
-            .filter(([_, selected]) => selected)
+            .filter(([, selected]) => selected)
             .map(([type]) => type),
           difficulty,
         },
@@ -209,14 +209,14 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     if (!generatedTest) return;
     
     try {
-      const testId = await createTestMutation({
+      await createTestMutation({
         noteId,
         title: saveTestName.trim() || `Test ${new Date().toLocaleString()}`,
         questions: generatedTest.questions,
         settings: {
           numQuestions,
           types: Object.entries(questionTypes)
-            .filter(([_, selected]) => selected)
+            .filter(([, selected]) => selected)
             .map(([type]) => type),
           difficulty,
         },
@@ -259,10 +259,10 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     }
   };
 
-  const openRenameDialog = (testId: Id<"tests">, currentTitle: string) => {
+  const openRenameDialog = (testId: Id<"tests">, currentTitle?: string) => {
     setSelectedTestId(testId);
-    setCurrentTestTitle(currentTitle);
-    setNewTestName(currentTitle);
+    setCurrentTestTitle(currentTitle || "Untitled Test");
+    setNewTestName(currentTitle || "Untitled Test");
     setIsRenameDialogOpen(true);
   };
 

@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 
 // Create a new test
 export const create = mutation({
@@ -128,6 +127,23 @@ export const list = query({
   },
 });
 
+// Define a type for the update object
+type TestUpdate = {
+  title?: string;
+  questions?: Array<{
+    type: string;
+    question: string;
+    options?: string[];
+    answer: string;
+    source?: string;
+  }>;
+  settings?: {
+    numQuestions: number;
+    types: string[];
+    difficulty: string;
+  };
+};
+
 // Update an existing test
 export const update = mutation({
   args: {
@@ -169,7 +185,7 @@ export const update = mutation({
     }
     
     // Prepare update object with only the fields that are provided
-    const updateObj: any = {};
+    const updateObj: TestUpdate = {};
     
     if (args.title !== undefined) {
       updateObj.title = args.title;

@@ -3,6 +3,34 @@ import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { Id } from "./_generated/dataModel";
+
+// Define a return type for the test generator
+type TestContent = {
+  questions: Array<{
+    type: string;
+    question: string;
+    options?: string[];
+    answer: string;
+    source?: string;
+  }>;
+  settings?: {
+    numQuestions: number;
+    types: string[];
+    difficulty: string;
+  };
+  title?: string;
+};
+
+// Define a type for the note
+type Note = {
+  title: string;
+  content: string;
+  userId: string;
+  _id: Id<"notes">;
+  createdAt: number;
+  updatedAt: number;
+};
 
 export const generateTest = action({
   args: {
@@ -13,7 +41,7 @@ export const generateTest = action({
       difficulty: v.string(),
     }),
   },
-  handler: async (ctx, args): Promise<any> => {
+  handler: async (ctx, args): Promise<TestContent> => {
     // Get the authenticated user
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -22,7 +50,7 @@ export const generateTest = action({
     const userId = identity.tokenIdentifier.split("|")[1];
     
     // Get the note content
-    const note: any = await ctx.runQuery(api.notes.get, { id: args.noteId });
+    const note = await ctx.runQuery(api.notes.get, { id: args.noteId }) as Note;
     if (!note) {
       throw new Error("Note not found");
     }
@@ -112,7 +140,7 @@ export const generateTest = action({
       }
 
       // Save the generated test to the database
-      const testId = await ctx.runMutation(api.tests.create, {
+      await ctx.runMutation(api.tests.create, {
         noteId: args.noteId,
         title: `Test for ${note.title}`,
         questions: generatedTest.questions,
@@ -133,7 +161,7 @@ export const getSavedTest = action({
   args: {
     testId: v.id("tests"),
   },
-  handler: async (ctx, args): Promise<any> => {
+  handler: async (ctx, args): Promise<TestContent> => {
     // Get the authenticated user
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {

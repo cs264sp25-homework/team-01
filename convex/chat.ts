@@ -192,7 +192,7 @@ export const streamingChatResponse = action({
             
             extractTextFromNodes(parsedContent);
             systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
-          } catch (error) {
+          } catch {
             // If parsing fails, use content as is with a length limit
             systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
           }
@@ -356,7 +356,7 @@ export const regenerateStreamingResponse = action({
             
             extractTextFromNodes(parsedContent);
             systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
-          } catch (error) {
+          } catch {
             // If parsing fails, use content as is with a length limit
             systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
           }

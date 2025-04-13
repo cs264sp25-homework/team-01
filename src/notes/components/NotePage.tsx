@@ -115,7 +115,7 @@ export function NotePage() {
       const editorText = editorEl.textContent || "";
       
       // Clean up the source text (remove extra spaces)
-      const cleanSource = text.replace(/\s+/g, ' ').trim();
+      const cleanSource = editorText.replace(/\s+/g, ' ').trim();
       
       // Start with a reasonable chunk size (at least 10 words)
       const words = cleanSource.split(' ');

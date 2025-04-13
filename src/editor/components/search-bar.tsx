@@ -72,7 +72,7 @@ export const SearchBar = () => {
   const navigateMatch = useCallback(
     (direction: 'next' | 'previous') => {
       if (matchesRef.current.length === 0) return;
-      let newIndex =
+      const newIndex =
         direction === 'next'
           ? (currentMatchIndex + 1) % matchesRef.current.length
           : (currentMatchIndex - 1 + matchesRef.current.length) % matchesRef.current.length;
@@ -101,7 +101,11 @@ export const SearchBar = () => {
       if (matchesRef.current.length === 0) return;
       if (e.key === 'F3' || (e.key === 'Enter' && document.activeElement !== inputRef.current)) {
         e.preventDefault();
-        e.shiftKey ? handlePrevious() : handleNext();
+        if (e.shiftKey) {
+          handlePrevious();
+        } else {
+          handleNext();
+        }
       }
       if ((e.ctrlKey || e.metaKey) && matchesRef.current.length > 0) {
         if (e.key === 'ArrowDown') {
