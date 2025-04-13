@@ -10,48 +10,10 @@ import { useState, useEffect } from "react";
 import { searchHighlight } from "@/editor/plugins/searchHighlightPlugin";
 import { Input } from "@/plate-ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/plate-ui/dialog";
-
-// Define the TypeScript interfaces for the test generator
-interface MCQQuestion {
-  type: "mcq";
-  question: string;
-  options: string[];
-  answer: string;
-  source?: string;
-}
-
-interface ShortAnswerQuestion {
-  type: "shortAnswer";
-  question: string;
-  answer: string;
-  source?: string;
-}
-
-interface TrueFalseQuestion {
-  type: "trueFalse";
-  question: string;
-  answer: "True" | "False";
-  source?: string;
-}
-
-interface FillInBlankQuestion {
-  type: "fillInBlank";
-  question: string;
-  answer: string;
-  source?: string;
-}
-
-type GeneratedQuestion = MCQQuestion | ShortAnswerQuestion | TrueFalseQuestion | FillInBlankQuestion;
-
-interface GeneratedTest {
-  questions: GeneratedQuestion[];
-}
-
-type TestGeneratorSidebarProps = {
-  onClose: () => void;
-  noteId: Id<"notes">;
-  navigateToText?: (text: string) => void;
-};
+import { 
+  GeneratedTest, 
+  TestGeneratorSidebarProps 
+} from "../types/test-generator-types";
 
 export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }: TestGeneratorSidebarProps) {
   // State for test generation options
@@ -157,6 +119,20 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     }
     
     return null;
+  };
+
+  // Add this function to calculate the score
+  const calculateScore = () => {
+    if (!generatedTest || !isSubmitted) return { correct: 0, total: 0 };
+    
+    // Only count questions that can be automatically graded (exclude short answer)
+    const gradableQuestions = generatedTest.questions.filter(q => q.type !== "shortAnswer");
+    
+    const correct = gradableQuestions.reduce((count, _, index) => {
+      return isAnswerCorrect(index) === true ? count + 1 : count;
+    }, 0);
+    
+    return { correct, total: gradableQuestions.length };
   };
 
   // Add this function to handle retaking the test
@@ -689,33 +665,13 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                 </>
               )}
             </Button>
-          ) : showAnswers ? (
-            <div className="flex space-x-2">
-              {!selectedTestId && (
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={openSaveDialog}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Test
-                </Button>
-              )}
-              <Button 
-                variant={selectedTestId ? "default" : "outline"}
-                className="flex-1"
-                onClick={handleNewTest}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                New Test
-              </Button>
-            </div>
           ) : isSubmitted ? (
             <div className="text-center">
-              <p className="text-sm mb-2">
-                {Object.values(userAnswers).filter((_, i) => isAnswerCorrect(i) === true).length} 
-                {" "}of{" "}
-                {generatedTest.questions.filter(q => q.type !== "shortAnswer").length} correct
+              {/* Display the score here */}
+              <p className="text-sm mb-2 font-medium">
+                Score: {calculateScore().correct} of {calculateScore().total} correct
+                {calculateScore().total > 0 && 
+                  ` (${Math.round((calculateScore().correct / calculateScore().total) * 100)}%)`}
               </p>
               <div className="flex space-x-2">
                 {!selectedTestId && (
