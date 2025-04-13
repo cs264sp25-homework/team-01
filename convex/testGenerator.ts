@@ -14,10 +14,22 @@ export const generateTest = action({
     }),
   },
   handler: async (ctx, args): Promise<any> => {
+    // Get the authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
     // Get the note content
     const note: any = await ctx.runQuery(api.notes.get, { id: args.noteId });
     if (!note) {
       throw new Error("Note not found");
+    }
+    
+    // Verify the note belongs to the user
+    if (note.userId !== userId) {
+      throw new Error("Access denied");
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -74,40 +86,76 @@ export const generateTest = action({
       Do not include any explanations or additional text outside the JSON structure.
       IMPORTANT: Return only raw JSON with no markdown formatting. Do not wrap your output in triple-backticks.`;
 
-      const result = await generateText({
+      const userPrompt = `Generate test questions based on the following notes:
+      
+      Title: ${note.title}
+      
+      Content:
+      ${note.content}`;
+
+      const response = await generateText({
         model: openai("gpt-4o"),
-        messages: [
-          {
-            role: "user",
-            content: `Generate a test based on these notes:\n\n${note.content}`,
-          }
-        ],
+        system: systemPrompt,
+        prompt: userPrompt,
         temperature: 0.7,
-        system: systemPrompt
+        maxTokens: 4000,
       });
 
+      // Parse the response as JSON
+      let generatedTest;
       try {
-        // Parse the JSON response
-        const testContent = JSON.parse(result.text);
-        return testContent;
-      } catch {
-        // If direct parsing fails, try to extract the JSON object
-        try {
-          const jsonMatch: RegExpMatchArray | null = result.text.match(/(\{[\s\S]*\})/);
-          if (jsonMatch && jsonMatch[1]) {
-            const extractedJson: string = jsonMatch[1];
-            return JSON.parse(extractedJson);
-          }
-        } catch {
-          // Extraction attempt also failed
-        }
-        
-        console.error("Failed to parse JSON response:", result);
-        throw new Error("Invalid response format from OpenAI");
+        // Access the text content from the response
+        generatedTest = JSON.parse(response.text);
+      } catch (error) {
+        console.error("Failed to parse AI response as JSON:", error);
+        throw new Error("Failed to generate test questions");
       }
+
+      // Save the generated test to the database
+      const testId = await ctx.runMutation(api.tests.create, {
+        noteId: args.noteId,
+        title: `Test for ${note.title}`,
+        questions: generatedTest.questions,
+        settings: args.options,
+      });
+
+      // Return the generated test
+      return generatedTest;
     } catch (error) {
       console.error("Error generating test:", error);
-      throw new Error(`Failed to generate test: ${error}`);
+      throw new Error("Failed to generate test questions");
     }
+  },
+});
+
+// Add a new action to get a saved test
+export const getSavedTest = action({
+  args: {
+    testId: v.id("tests"),
+  },
+  handler: async (ctx, args): Promise<any> => {
+    // Get the authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    // Get the test from the database
+    const test = await ctx.runQuery(api.tests.get, { id: args.testId });
+    if (!test) {
+      throw new Error("Test not found");
+    }
+    
+    // Verify the test belongs to the user
+    if (test.userId !== userId) {
+      throw new Error("Access denied");
+    }
+    
+    return {
+      questions: test.questions,
+      settings: test.settings,
+      title: test.title,
+    };
   },
 }); 
