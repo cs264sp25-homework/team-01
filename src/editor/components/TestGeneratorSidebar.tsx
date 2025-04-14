@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { XIcon, BookOpen, CheckCircle, RefreshCw, BookOpenText, Trash2, Edit, Save, List } from "lucide-react";
+import { XIcon, BookOpen, CheckCircle, RefreshCw, Trash2, Edit, Save, List, MapPin } from "lucide-react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -301,7 +301,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
             {view === "generate" ? (
               <><List className="w-3 h-3 mr-1" /> Saved Tests</>
             ) : (
-              <><BookOpen className="w-3 h-3 mr-1" /> New Test</>
+              <> </>
             )}
           </Button>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -437,7 +437,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                           className={`text-xs h-5 px-2 ${highlightedSources[index] ? "bg-blue-500 text-white hover:bg-blue-600" : ""}`}
                           onClick={() => handleNavigateToSource(question.source, index)}
                         >
-                          <BookOpenText className="w-3 h-3 mr-1" />
+                          <MapPin className="w-3 h-3 mr-1" />
                           {highlightedSources[index] ? "Hide in Notes" : "Find in Notes"}
                         </Button>
                       )}
@@ -660,7 +660,6 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                 </>
               ) : (
                 <>
-                  <BookOpen className="w-4 h-4 mr-2" />
                   Generate Test
                 </>
               )}
@@ -697,7 +696,6 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                   className="flex-1"
                   onClick={handleNewTest}
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
                   New Test
                 </Button>
               </div>
@@ -720,7 +718,6 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
             }} 
             className="w-full"
           >
-            <BookOpen className="w-4 h-4 mr-2" />
             Create New Test
           </Button>
         )}
