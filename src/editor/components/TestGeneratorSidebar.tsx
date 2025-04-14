@@ -7,7 +7,7 @@ import { Slider } from "@/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
 import { useState, useEffect } from "react";
-import { searchHighlight } from "@/editor/plugins/searchHighlightPlugin";
+import { searchHighlight } from "../plugins/searchHighlightPlugin";
 import { Input } from "@/plate-ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/plate-ui/dialog";
 import { 
@@ -185,9 +185,8 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
       // Highlight the new source
       navigateToText(source);
       
-      // Update state
+      // Update state - reset all to false, then set this one to true
       setHighlightedSources(prev => {
-        // Reset all to false, then set this one to true
         const newState: Record<number, boolean> = {};
         Object.keys(prev).forEach(key => {
           newState[Number(key)] = false;

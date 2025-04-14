@@ -37,6 +37,9 @@ export const searchHighlight = {
       return { matchCount, matches };
     }
 
+    // Normalize the search term - replace special characters with regex-safe versions
+    const normalizedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
     // Get current content and create a temporary container.
     const editorContent = editorEl.innerHTML;
     const tempDiv = document.createElement('div');
@@ -46,35 +49,51 @@ export const searchHighlight = {
     const highlightTextInNode = (node: Node): number => {
       if (node.nodeType === Node.TEXT_NODE && node.textContent) {
         const text = node.textContent;
-        const searchFor = caseSensitive ? searchTerm : searchTerm.toLowerCase();
+        const searchFor = caseSensitive ? normalizedSearchTerm : normalizedSearchTerm.toLowerCase();
         const textToSearch = caseSensitive ? text : text.toLowerCase();
+        
+        // Create a regex that's more flexible with whitespace and punctuation
+        const searchRegex = new RegExp(searchFor.replace(/\s+/g, '\\s+').replace(/:/g, '\\s*:\\s*'), 'g');
+        
         let count = 0;
         let lastIndex = 0;
-        let index: number;
         const fragments: Node[] = [];
-        while ((index = textToSearch.indexOf(searchFor, lastIndex)) !== -1) {
+        let match;
+        
+        // Reset the regex lastIndex
+        searchRegex.lastIndex = 0;
+        
+        while ((match = searchRegex.exec(textToSearch)) !== null) {
+          const index = match.index;
+          const matchLength = match[0].length;
+          
           if (index > lastIndex) {
             fragments.push(document.createTextNode(text.substring(lastIndex, index)));
           }
-          // Create a span for the matching text.
+          
+          // Create a span for the matching text
           const highlightSpan = document.createElement('span');
           highlightSpan.className = 'search-highlight';
           highlightSpan.style.backgroundColor = '#ffeb3b80'; // default style
-          highlightSpan.textContent = text.substring(index, index + searchTerm.length);
+          highlightSpan.textContent = text.substring(index, index + matchLength);
           fragments.push(highlightSpan);
-          lastIndex = index + searchTerm.length;
+          
+          lastIndex = index + matchLength;
           count++;
         }
+        
         if (lastIndex < text.length) {
           fragments.push(document.createTextNode(text.substring(lastIndex)));
         }
-        // Replace the current text node if any matches were found.
+        
+        // Replace the current text node if any matches were found
         if (count > 0 && node.parentNode) {
           fragments.forEach((fragment) => {
             node.parentNode!.insertBefore(fragment, node);
           });
           node.parentNode.removeChild(node);
         }
+        
         return count;
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         if ((node as Element).classList.contains('search-highlight')) {

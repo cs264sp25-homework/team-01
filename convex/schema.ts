@@ -39,6 +39,9 @@ const schema = defineSchema({
     noteId: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_note", ["noteId"])
+    .index("by_user_and_note", ["userId", "noteId"]),
   // New table for tests
   tests: defineTable({
     title: v.optional(v.string()),

@@ -138,33 +138,64 @@ export function NotePage() {
       return;
     }
     
-    // If no exact match, try to find the longest matching substring
-    const findLongestMatch = () => {
+    // If no exact match, try to find the best matching substring
+    const findBestMatch = () => {
       // Get all text content from the editor
       const editorText = editorEl.textContent || "";
       
       // Clean up the source text (remove extra spaces)
-      const cleanSource = editorText.replace(/\s+/g, ' ').trim();
+      const cleanSource = text.replace(/\s+/g, ' ').trim();
+      const cleanEditor = editorText.replace(/\s+/g, ' ').trim();
       
-      // Start with a reasonable chunk size (at least 10 words)
-      const words = cleanSource.split(' ');
+      // Extract significant phrases (5+ words) from the source text
+      const phrases = cleanSource
+        .split(/[.!?;]/)
+        .map(phrase => phrase.trim())
+        .filter(phrase => phrase.length > 20);
       
-      // Try progressively smaller chunks until we find a match
-      for (let chunkSize = Math.min(20, words.length); chunkSize >= 3; chunkSize--) {
-        // Try different starting positions
-        for (let startPos = 0; startPos <= words.length - chunkSize; startPos++) {
-          const chunk = words.slice(startPos, startPos + chunkSize).join(' ');
-          if (chunk.length < 15) continue; // Skip very short chunks
-          
-          const { matchCount, matches } = searchHighlight.highlight(editorEl, chunk, false);
-          
+      // Try each significant phrase
+      for (const phrase of phrases) {
+        const { matchCount, matches } = searchHighlight.highlight(editorEl, phrase, false);
+        if (matchCount > 0 && matches.length > 0) {
+          searchHighlight.highlightCurrent(matches[0]);
+          return true;
+        }
+        searchHighlight.clear(editorEl);
+      }
+      
+      // If no phrase matches, try individual words
+      const sourceWords = cleanSource.split(/\s+/).filter(word => word.length > 5);
+      const editorWords = cleanEditor.split(/\s+/);
+      
+      // Find the most unique words from the source
+      const uniqueWords = sourceWords
+        .filter(word => word.length > 5)
+        .sort((a, b) => {
+          // Count occurrences in editor text
+          const aCount = editorWords.filter(w => w.toLowerCase() === a.toLowerCase()).length;
+          const bCount = editorWords.filter(w => w.toLowerCase() === b.toLowerCase()).length;
+          // Prefer words that appear less frequently (more unique)
+          return aCount - bCount;
+        })
+        .slice(0, 5); // Take top 5 most unique words
+      
+      // Try to find a section with multiple unique words close together
+      for (let i = 0; i < editorWords.length - 10; i++) {
+        const section = editorWords.slice(i, i + 15).join(' ');
+        let matchCount = 0;
+        
+        for (const word of uniqueWords) {
+          if (section.toLowerCase().includes(word.toLowerCase())) {
+            matchCount++;
+          }
+        }
+        
+        if (matchCount >= 2) { // If at least 2 unique words are found close together
+          const { matchCount, matches } = searchHighlight.highlight(editorEl, section, false);
           if (matchCount > 0 && matches.length > 0) {
             searchHighlight.highlightCurrent(matches[0]);
-            console.log(`Found partial match: "${chunk}"`);
             return true;
           }
-          
-          // Clear any failed highlights before trying the next chunk
           searchHighlight.clear(editorEl);
         }
       }
@@ -172,27 +203,11 @@ export function NotePage() {
       return false;
     };
     
-    // Try to find the longest match
-    const foundMatch = findLongestMatch();
+    // Try to find the best match
+    const foundMatch = findBestMatch();
     
     if (!foundMatch) {
-      // Last resort: try individual key phrases
-      const keyPhrases = text
-        .split(/[.,;:!?]/)
-        .map(phrase => phrase.trim())
-        .filter(phrase => phrase.length > 15);
-        
-      for (const phrase of keyPhrases) {
-        const { matchCount, matches } = searchHighlight.highlight(editorEl, phrase, false);
-        if (matchCount > 0 && matches.length > 0) {
-          searchHighlight.highlightCurrent(matches[0]);
-          console.log(`Found key phrase match: "${phrase}"`);
-          return;
-        }
-        searchHighlight.clear(editorEl);
-      }
-      
-      console.log("No matches found for source text:", text);
+      console.log("No good matches found for source text:", text);
     }
   };
 
@@ -366,17 +381,12 @@ export function NotePage() {
                     <TestGeneratorSidebar
                       onClose={closeSidebars}
                       noteId={noteId as Id<"notes">}
+                      navigateToText={navigateToText}
                     />
                   ) : (
-
                     <ConceptMapSidebar
                       onClose={closeSidebars}
                       noteId={noteId as Id<"notes">}
-
-                    <TestGeneratorSidebar 
-                      onClose={closeSidebars} 
-                      noteId={noteId as Id<"notes">}
-                      navigateToText={navigateToText}
                     />
                   )}
                 </div>
