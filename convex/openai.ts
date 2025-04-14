@@ -215,8 +215,11 @@ export const completeText = action({
     prompt: v.string(),
   },
   handler: async (_, args) => {
+    console.log("completeText called with prompt:", args.prompt);
+    
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
+      console.error("OpenAI API key not configured");
       throw new ConvexError({
         code: 500,
         message: "OpenAI API key not configured"
@@ -226,33 +229,43 @@ export const completeText = action({
     try {
       // Initialize OpenAI client
       const openai = new OpenAI({ apiKey });
+      console.log("OpenAI client initialized");
+
+      // Simplify the prompt for better results
+      const prompt = args.prompt.trim();
+      console.log("Using prompt:", prompt);
 
       // Generate completion with OpenAI
+      console.log("Requesting completion from OpenAI...");
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-3.5-turbo", // Use 3.5 for faster results
         messages: [
           {
             role: "system",
-            content: "You are an advanced AI writing assistant. Continue the text naturally up to the next punctuation mark. Keep it concise and maintain the style and tone.",
+            content: "You are an AI assistant that continues text. Your completions should be natural and concise, fitting the style of the original text.",
           },
           {
             role: "user",
-            content: `Continue this text: "${args.prompt}"`,
-          },
+            content: prompt,
+          }
         ],
         max_tokens: 50,
         temperature: 0.7,
       });
 
+      console.log("OpenAI response received:", completion.choices[0].message);
+      
       // Return the completion
-      return {
+      const result = {
         text: completion.choices[0].message.content?.trim() || "",
       };
+      console.log("Returning result:", result);
+      return result;
     } catch (error) {
       console.error("Error in completeText action:", error);
       throw new ConvexError({
         code: 500,
-        message: "Failed to generate text completion",
+        message: "Failed to generate text completion"
       });
     }
   },
