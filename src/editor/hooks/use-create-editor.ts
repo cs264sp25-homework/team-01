@@ -62,7 +62,7 @@ import {
   usePlateEditor,
 } from '@udecode/plate/react';
 
-import { copilotPlugins } from '@/editor/plugins/copilot-plugins';
+import { copilotPlugins } from '@/editor/plugins/copilot-plugin';
 import { editorPlugins } from '@/editor/plugins/editor-plugins';
 import { FixedToolbarPlugin } from '@/editor/plugins/fixed-toolbar-plugin';
 import { FloatingToolbarPlugin } from '@/editor/plugins/floating-toolbar-plugin';

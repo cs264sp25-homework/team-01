@@ -1,331 +1,163 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { createPlatePlugin } from '@udecode/plate/react';
+import type { TElement, PlateEditor } from "@udecode/plate";
+import { CopilotPlugin, CopilotSuggestionOptions } from "@udecode/plate-ai/react";
 import { serializeMdNodes, stripMarkdown } from "@udecode/plate-markdown";
+
 import { ConvexReactClient } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-// Connect to our Convex backend which handles the OpenAI API calls
+import { GhostText } from "@/plate-ui/ghost-text";
+
+// Initialize Convex client
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL || "");
 
-// State interface for tracking AI suggestions
-interface CopilotState {
-  isActive: boolean;       // Is the suggestion feature currently active
-  isLoading: boolean;      // Is an API call in progress
-  suggestions: string[];   // List of all suggestions (we currently just use one)
-  currentSuggestionIndex: number;  // Index of current suggestion
-  currentText: string;     // Text content of the current suggestion
+// Debug flag for logging
+const DEBUG = true;
+
+function log(...args: any[]) {
+  if (DEBUG) {
+    console.log("[Copilot]", ...args);
+  }
 }
 
-// Renders the ghost text that appears as a suggestion
-export function CustomGhostText({ text }: { text: string }) {
-  if (!text) return null;
-  
-  return (
-    <span
-      className="pointer-events-none text-muted-foreground/70 max-sm:hidden"
-      contentEditable={false}
-    >
-      {text}
-    </span>
-  );
+interface GetSuggestionParams {
+  editor: PlateEditor;
+  at: any; // Location in the document
+  text: string;
+  open: boolean;
 }
 
-// Create the basic plate plugin shell
-export const copilotPlugin = createPlatePlugin({
-  key: 'copilot',
-  
-  // Tell the editor to render our ghost text component
-  render: {
-    afterEditable: () => <CopilotGhostTextRenderer />,
-  },
-});
-
-/**
- * Custom type definition for our keyboard handler
- * 
- * This is needed because Plate's DOMHandler type doesn't exactly match our implementation.
- * We're defining our own handler signature to match how we actually use it.
- */
-type CopilotKeyHandler = (editor: any, event: any) => boolean;
-
-/**
- * Extends the Plate plugin with custom behavior
- * 
- * Note: We use type assertions (as unknown as CopilotKeyHandler) to bridge the gap
- * between Plate's expected types and our custom implementation. This allows us to
- * create custom keyboard behaviors.
- */
-const initializeCopilot = () => {
-  const originalPlugin = copilotPlugin;
-  
-  // Add keyboard handlers to trigger AI suggestions
-  originalPlugin.handlers = {
-    onKeyDown: ((editor: any, event: any) => {
-      const plateEditor = editor as any;
+// Configure the copilot plugin to use our Convex backend
+export const copilotPlugins = [
+  CopilotPlugin.configure(({ api: editorApi }) => ({
+    options: {
+      debounceDelay: 300, // Shorter delay for faster response
+      renderGhostText: GhostText,
       
-      // Initialize the editor if needed
-      if (!plateEditor.copilotState) {
-        initializeEditor(plateEditor);
-      }
-      
-      // KEYBOARD SHORTCUT 1: Ctrl+Space - Generate or cycle through suggestions
-      if (event.ctrlKey && event.code === 'Space') {
-        event.preventDefault();
-        
-        const state = plateEditor.copilotState;
-        
-        if (state?.isActive && state.suggestions?.length > 1) {
-          // Cycle through multiple suggestions if available
-          const nextIndex = ((state.currentSuggestionIndex || 0) + 1) % state.suggestions.length;
-          plateEditor.copilot?.setCurrentSuggestion(nextIndex);
-        } else {
-          // Generate a new suggestion from OpenAI
-          plateEditor.copilot?.generateSuggestion();
-        }
-        return true;
-      }
-      
-      // KEYBOARD SHORTCUT 2: Tab - Accept entire suggestion
-      if (event.key === 'Tab' && plateEditor.copilotState?.isActive) {
-        event.preventDefault();
-        plateEditor.copilot?.acceptSuggestion();
-        return true;
-      }
-      
-      // KEYBOARD SHORTCUT 3: Cmd/Ctrl+Right Arrow - Accept suggestion word by word
-      if ((event.metaKey || event.ctrlKey) && event.key === 'ArrowRight' && plateEditor.copilotState?.isActive) {
-        event.preventDefault();
-        plateEditor.copilot?.acceptWord();
-        return true;
-      }
-      
-      // Let other key handlers process the event
-      return false;
-    }) as unknown as CopilotKeyHandler
-  } as any; // Cast the entire handlers object to 'any' to satisfy TypeScript
-  
-  // Add our initialization function to the plugin
-  // @ts-ignore - We need to augment the plugin with withOverrides
-  originalPlugin.withOverrides = (editor: any) => {
-    initializeEditor(editor);
-    return editor;
-  };
-  
-  return originalPlugin;
-};
-
-// Setup the editor with our custom state and methods
-function initializeEditor(editor: any): void {
-  // Initialize state for AI suggestions
-  editor.copilotState = {
-    isActive: false,
-    isLoading: false,
-    suggestions: [],
-    currentSuggestionIndex: 0,
-    currentText: '',
-  };
-  
-  // Add our copilot methods to the editor
-  editor.copilot = {
-    // This is the main method that generates AI suggestions
-    generateSuggestion: async () => {
-      try {
-        // Step 1: Extract text content from the editor to use as a prompt
-        let prompt = "";
-        
-        // Try to get the current paragraph/block content
-        if (typeof editor.api?.block === 'function') {
+      // Function to generate suggestions
+      getSuggestion: async ({ editor, at, text, open }: GetSuggestionParams) => {
+        try {
+          if (!open) return;
+          
+          log("Generating suggestion");
+          let prompt = "";
+          
+          // Get current text content
           const contextEntry = editor.api.block({ highest: true });
-          if (contextEntry && contextEntry[0]) {
-            // Convert editor nodes to markdown text for the API
-            prompt = serializeMdNodes([contextEntry[0]]);
+          
+          if (!contextEntry || !contextEntry[0]) {
+            log("No context found");
+            return;
           }
-        } else if (typeof editor.getFragment === 'function') {
-          const fragment = editor.getFragment();
-          if (fragment && fragment[0]) {
-            prompt = serializeMdNodes([fragment[0]]);
+          
+          prompt = serializeMdNodes([contextEntry[0] as TElement]);
+          log("Got prompt:", prompt);
+          
+          // Call our Convex backend
+          log("Calling OpenAI via Convex");
+          const result = await convex.action(api.openai.completeText, { prompt });
+          
+          if (!result || !result.text) {
+            log("No valid suggestion received");
+            return;
           }
+          
+          const completionText = stripMarkdown(result.text);
+          log("Got suggestion:", completionText);
+          
+          return {
+            text: completionText,
+          };
+        } catch (error) {
+          console.error("Error generating suggestion:", error);
+          return {
+            text: "",
+          };
         }
-        
-        if (!prompt) return;
-        
-        // Step 2: Show loading state
-        editor.copilot.setState({
-          isActive: true,
-          isLoading: true,
-          suggestions: [],
-          currentSuggestionIndex: 0,
-          currentText: '',
-        });
-        
-        // Step 3: Call OpenAI through our Convex backend
-        // This is the key integration point - it calls the completeText action
-        // in convex/openai.ts which makes the actual OpenAI API request
-        const result = await convex.action(api.openai.completeText, {
-          prompt,
-        });
-        
-        // Step 4: Display the result as ghost text
-        if (result.text) {
-          editor.copilot.setState({
-            isLoading: false,
-            suggestions: [stripMarkdown(result.text)],
-            currentText: stripMarkdown(result.text),
+      },
+      
+      // Alternative approach using the completeOptions
+      completeOptions: {
+        api: "/api/non-existent-endpoint", // Will trigger onError to use our Convex implementation
+        body: {
+          system: `You are an advanced AI writing assistant, similar to VSCode Copilot but for general text. Your task is to predict and generate the next part of the text based on the given context.
+  
+Rules:
+- Continue the text naturally up to the next punctuation mark.
+- Maintain style and tone. Don't repeat given text.
+- For unclear context, provide the most likely continuation.
+- Handle code snippets, lists, or structured text if needed.
+- CRITICAL: Always end with a punctuation mark.
+- CRITICAL: Avoid starting a new block.`,
+        },
+        onError: async () => {
+          try {
+            log("fallback: Using Convex API directly");
+            
+            // Get current context from editor
+            const contextEntry = editorApi.block({ highest: true });
+            let prompt = "";
+
+            if (contextEntry) {
+              prompt = serializeMdNodes([contextEntry[0] as TElement]);
+              log("fallback: Got prompt:", prompt);
+            } else {
+              log("fallback: No context found");
+              return;
+            }
+
+            // Call Convex action for text completion
+            log("fallback: Calling OpenAI via Convex");
+            const result = await convex.action(api.openai.completeText, {
+              prompt,
+            });
+
+            // Process result
+            if (result && result.text) {
+              const cleanText = stripMarkdown(result.text);
+              log("fallback: Got suggestion:", cleanText);
+              
+              // Set the completion as the suggestion
+              editorApi.copilot.setBlockSuggestion({
+                text: cleanText,
+              });
+            } else {
+              log("fallback: No valid suggestion received");
+            }
+          } catch (error) {
+            console.error("Error calling Convex action:", error);
+          }
+        },
+        onFinish: (_, completion) => {
+          if (completion === "0") return;
+          
+          const cleanText = stripMarkdown(completion);
+          log("onFinish: Setting suggestion:", cleanText);
+          
+          editorApi.copilot.setBlockSuggestion({
+            text: cleanText,
           });
+        },
+      },
+      
+      // Function to get the prompt text for the API call
+      getPrompt: ({ editor }: { editor: PlateEditor }) => {
+        const contextEntry = editor.api.block({ highest: true });
+
+        if (!contextEntry) {
+          log("getPrompt: No context found");
+          return "";
         }
-      } catch (error) {
-        console.error("Error generating suggestion:", error);
-        // Reset on error
-        editor.copilot.setState({
-          isActive: false,
-          isLoading: false,
-          suggestions: [],
-          currentText: '',
-        });
-      }
-    },
-    
-    // Select a specific suggestion from the array
-    setCurrentSuggestion: (index: number) => {
-      const state = editor.copilotState;
-      
-      if (!state.suggestions?.length || index >= state.suggestions.length) return;
-      
-      editor.copilot.setState({
-        currentSuggestionIndex: index,
-        currentText: state.suggestions[index],
-      });
-    },
-    
-    // Tab key handler - accept the entire suggestion at once
-    acceptSuggestion: () => {
-      const state = editor.copilotState;
-      
-      if (!state.isActive || !state.currentText) return;
-      
-      // Insert the suggested text into the editor
-      if (typeof editor.insertText === 'function') {
-        editor.insertText(state.currentText);
-      }
-      
-      // Reset suggestion state
-      editor.copilot.setState({
-        isActive: false,
-        isLoading: false,
-        suggestions: [],
-        currentText: '',
-      });
-    },
-    
-    // Cmd+Right handler - accept one word at a time
-    acceptWord: () => {
-      const state = editor.copilotState;
-      
-      if (!state.isActive || !state.currentText) return;
-      
-      // Extract words from the suggestion
-      const words = state.currentText.split(/\s+/);
-      const firstWord = words[0];
-      
-      if (!firstWord) return;
-      
-      // Insert just the first word
-      if (typeof editor.insertText === 'function') {
-        editor.insertText(firstWord + ' ');
-      }
-      
-      // Update state with the remaining words
-      const remainingText = words.slice(1).join(' ');
-      
-      if (remainingText) {
-        editor.copilot.setState({
-          currentText: remainingText,
-        });
-      } else {
-        // If no words left, reset state
-        editor.copilot.setState({
-          isActive: false,
-          isLoading: false,
-          suggestions: [],
-          currentText: '',
-        });
-      }
-    },
-    
-    // Helper to update the copilot state
-    setState: (newState: Partial<CopilotState>) => {
-      editor.copilotState = {
-        ...editor.copilotState,
-        ...newState,
-      };
-    },
-  };
-}
 
-// React component that displays the ghost text in the editor
-export function CopilotGhostTextRenderer() {
-  const [ghostText, setGhostText] = useState('');
-  const [editor, setEditor] = useState<any>(null);
-  
-  // Get access to the editor instance
-  useEffect(() => {
-    // The editor is exposed on the window object by Plate
-    const editorInstance = (window as any).__PLATE_EDITOR__;
-    if (editorInstance) {
-      setEditor(editorInstance);
-    }
-  }, []);
-  
-  // Update the ghost text when editor state changes
-  useEffect(() => {
-    if (!editor) return;
-    
-    // Initial check for active suggestions
-    if (editor.copilotState?.isActive && editor.copilotState.currentText) {
-      setGhostText(editor.copilotState.currentText);
-    }
-    
-    // Poll for changes in the editor state
-    // This is needed because editor state may change outside React's knowledge
-    const interval = setInterval(() => {
-      if (editor.copilotState?.isActive && editor.copilotState.currentText) {
-        setGhostText(editor.copilotState.currentText);
-      } else {
-        setGhostText('');
-      }
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, [editor]);
-  
-  if (!ghostText) return null;
-  
-  return <CustomGhostText text={ghostText} />;
-}
+        const prompt = serializeMdNodes([contextEntry[0] as TElement]);
+        log("getPrompt: Generated prompt:", prompt);
 
-// Initialize the plugin when this module loads
-initializeCopilot();
-
-// Export the plugins array for easy import in the editor configuration
-export const copilotPlugins = [copilotPlugin] as const;
-
-/*
-HOW THIS CODE WORKS WITH OPENAI:
-
-1. INTEGRATION FLOW:
-   - User presses Ctrl+Space in the editor
-   - The plugin extracts the current text content
-   - Text is sent to Convex backend via api.openai.completeText 
-   - In convex/openai.ts, the backend calls OpenAI's API with this text
-   - OpenAI generates a completion that is sent back through Convex
-   - The plugin receives the AI-generated text and shows it as ghost text
-   - User can accept it with Tab or incrementally with Cmd+Right
-
-2. KEYBOARD SHORTCUTS:
-   - Ctrl+Space: Generate AI suggestion
-   - Tab: Accept entire suggestion
-   - Cmd/Ctrl+Right Arrow: Accept one word at a time
-   - Ctrl+Z: Undo accepted suggestions
-*/
+        return `Continue the following text:
+"""
+${prompt}
+"""`;
+      },
+    } as CopilotSuggestionOptions,
+  })),
+] as const;
