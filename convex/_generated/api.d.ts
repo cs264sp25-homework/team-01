@@ -22,6 +22,7 @@ import type * as notes from "../notes.js";
 import type * as notes_queries from "../notes_queries.js";
 import type * as openai from "../openai.js";
 import type * as testGenerator from "../testGenerator.js";
+import type * as tests from "../tests.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   notes_queries: typeof notes_queries;
   openai: typeof openai;
   testGenerator: typeof testGenerator;
+  tests: typeof tests;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
