@@ -2,6 +2,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import OpenAI from "openai";
+import { api } from "./_generated/api";
 
 // Organize notes using OpenAI
 export const organizeNotes = action({
@@ -253,6 +254,154 @@ export const completeText = action({
       throw new ConvexError({
         code: 500,
         message: "Failed to generate text completion",
+      });
+    }
+  },
+});
+
+// Generate concept map from note content
+export const generateConceptMap = action({
+  args: {
+    content: v.string(),
+    noteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new ConvexError({
+        code: 500,
+        message: "OpenAI API key not configured"
+      });
+    }
+
+    try {
+      // Initialize OpenAI client
+      const openai = new OpenAI({ apiKey });
+      
+      // Parse the content to get the actual text
+      const notes = JSON.parse(args.content);
+      
+      // Extract text content from the notes structure
+      const textContent = notes.map((note: any) => {
+        // Get the text from each child
+        if (note.children) {
+          return note.children.map((child: any) => child.text || "").join("");
+        }
+        return "";
+      }).join("\n");
+
+      // Generate concept map with OpenAI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a concept map generator. Analyze the provided notes and create a concept map structure.
+            Extract key concepts, their relationships, and organize them in a network structure.
+            
+            Your output should be a valid JSON object with the following structure:
+            {
+              "nodes": [
+                {
+                  "id": "unique_id_1",
+                  "type": "default",
+                  "data": { "label": "Concept 1" },
+                  "position": { "x": 0, "y": 0 }
+                },
+                ...
+              ],
+              "edges": [
+                {
+                  "id": "unique_edge_id_1",
+                  "source": "unique_id_1",
+                  "target": "unique_id_2",
+                  "label": "relationship"
+                },
+                ...
+              ]
+            }
+            
+            Rules:
+            1. Node IDs must be unique strings
+            2. Edge sources and targets must reference existing node IDs
+            3. Position coordinates should create a readable layout:
+               - Ensure nodes are at least 200px apart horizontally and 150px apart vertically
+               - Consider edge label space (leave at least 100px between nodes connected by labeled edges)
+               - Position nodes on a grid-like layout when possible
+               - Offset nodes slightly to avoid perfect alignment that could cause overlap
+            4. Main concepts should be central
+            5. Related concepts should be connected with meaningful edges
+            6. Include 5-15 nodes depending on content complexity
+            7. Keep edge labels short and concise (1-3 words maximum)
+            8. Do not include any explanation or text outside the JSON structure
+            9. Make sure the output is valid JSON that can be parsed
+            `
+          },
+          {
+            role: "user",
+            content: `Generate a concept map from these notes: ${textContent}`
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 2000
+      });
+
+      // Get the response content
+      let conceptMapContent = completion.choices[0].message.content?.trim() || "{}";
+      
+      // Strip markdown code blocks if present
+      if (conceptMapContent.startsWith("```")) {
+        // Extract content between code blocks
+        const codeBlockMatch = conceptMapContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          conceptMapContent = codeBlockMatch[1].trim();
+        } else {
+          // If regex didn't work, try a simpler approach
+          conceptMapContent = conceptMapContent
+            .replace(/^```json\s*/, '')
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '')
+            .trim();
+        }
+      }
+      
+      // Validate the response is proper JSON
+      try {
+        const parsed = JSON.parse(conceptMapContent);
+        if (!parsed.nodes || !Array.isArray(parsed.nodes) || !parsed.edges || !Array.isArray(parsed.edges)) {
+          throw new Error("Invalid concept map structure");
+        }
+        
+        // Make sure we have at least some content
+        if (parsed.nodes.length === 0) {
+          throw new Error("No nodes returned in concept map");
+        }
+        
+        // Store the concept map in the database
+        await ctx.runMutation(api.conceptMap.storeConceptMap, {
+          nodes: parsed.nodes,
+          edges: parsed.edges,
+          noteId: args.noteId,
+        });
+        
+        return { conceptMap: parsed };
+      } catch (e) {
+        console.error("JSON parsing error:", e, conceptMapContent);
+        throw new ConvexError({
+          code: 500,
+          message: "Invalid response from AI. Could not parse concept map data.",
+        });
+      }
+    } catch (error) {
+      console.error("Error in generate-concept-map action:", error);
+      
+      if (error instanceof ConvexError) {
+        throw error;
+      }
+      
+      throw new ConvexError({
+        code: 500,
+        message: "Failed to generate concept map",
       });
     }
   },

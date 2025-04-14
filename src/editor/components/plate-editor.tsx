@@ -1,18 +1,26 @@
 // plate-editor.tsx
-'use client';
+"use client";
 
-import { useEffect, useCallback, useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plate } from '@udecode/plate/react';
-import { useAction } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
-import { useCreateEditor } from '@/editor/hooks/use-create-editor';
-import { Editor, EditorContainer } from '@/plate-ui/editor';
-import { Button } from '@/ui/button';
-import { SaveIcon, SearchIcon, ListFilterIcon } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { SearchBar, createSearchHighlightPlugin } from '@/editor/components/search-bar';
+import { useEffect, useCallback, useState } from "react";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { Plate } from "@udecode/plate/react";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useCreateEditor } from "@/editor/hooks/use-create-editor";
+import { Editor, EditorContainer } from "@/plate-ui/editor";
+import { Button } from "@/ui/button";
+import {
+  SaveIcon,
+  SearchIcon,
+  ListFilterIcon,
+  NetworkIcon,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
+import {
+  SearchBar,
+  createSearchHighlightPlugin,
+} from "@/editor/components/search-bar";
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
@@ -78,7 +86,10 @@ export function PlateEditor({
     [editor, onUpdate]
   );
 
-  const debouncedSave = useCallback(debounce(() => saveContent(false), 2000), [saveContent]);
+  const debouncedSave = useCallback(
+    debounce(() => saveContent(false), 2000),
+    [saveContent]
+  );
 
   const handleEditorChange = useCallback(() => {
     setIsDirty(true);
@@ -101,7 +112,7 @@ export function PlateEditor({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
-        setShowSearchBar(prev => !prev);
+        setShowSearchBar((prev) => !prev);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -114,7 +125,9 @@ export function PlateEditor({
       toast.loading("Organizing your notes...", { id: "organize-notes" });
       const currentContent = JSON.stringify(editor.children);
       console.log("Current content:", currentContent);
-      const { organizedContent } = await organizeNotesAction({ content: currentContent });
+      const { organizedContent } = await organizeNotesAction({
+        content: currentContent,
+      });
       console.log("Organized content:", organizedContent);
       try {
         const rawContent = organizedContent.trim();
@@ -126,7 +139,9 @@ export function PlateEditor({
             throw new Error("Empty array returned from AI");
         } catch (e) {
           console.error("JSON parsing error:", e, rawContent);
-          throw new Error("Invalid response from AI. Could not parse as JSON array.");
+          throw new Error(
+            "Invalid response from AI. Could not parse as JSON array."
+          );
         }
         editor.children = processedContent;
         // Trigger normalization on the editor.
@@ -136,10 +151,15 @@ export function PlateEditor({
           handleEditorChange();
           setIsDirty(true);
         }, 0);
-        toast.success("Notes organized successfully!", { id: "organize-notes" });
+        toast.success("Notes organized successfully!", {
+          id: "organize-notes",
+        });
       } catch (parseError) {
         console.error("Error parsing organized content:", parseError);
-        toast.error("Failed to apply organized notes - invalid format returned", { id: "organize-notes" });
+        toast.error(
+          "Failed to apply organized notes - invalid format returned",
+          { id: "organize-notes" }
+        );
       }
     } catch (error) {
       console.error("Error organizing notes:", error);
@@ -151,6 +171,13 @@ export function PlateEditor({
       setIsOrganizing(false);
     }
   }, [editor, handleEditorChange, organizeNotesAction]);
+
+  // Function to generate concept map
+  const generateConceptMap = useCallback(() => {
+    // Create and dispatch a custom event to show the concept map sidebar
+    const event = new CustomEvent("showConceptMap");
+    window.dispatchEvent(event);
+  }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -194,10 +221,20 @@ export function PlateEditor({
                   </>
                 )}
               </Button>
+              <Button
+                onClick={generateConceptMap}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <NetworkIcon className="w-4 h-4" />
+                Generate Concept Map
+              </Button>
             </div>
             {lastSavedAt && (
               <span className="text-sm text-gray-500">
-                {isAutoSaving ? "Auto-saving..." : `Last saved: ${lastSavedAt.toLocaleTimeString()}`}
+                {isAutoSaving
+                  ? "Auto-saving..."
+                  : `Last saved: ${lastSavedAt.toLocaleTimeString()}`}
               </span>
             )}
           </div>
@@ -213,7 +250,12 @@ export function PlateEditor({
               <Editor placeholder="Type here..." autoFocus />
             </EditorContainer>
             <div className="absolute top-2 right-2">
-              <Button variant="outline" size="sm" onClick={() => setShowSearchBar(prev => !prev)} title="Search (Ctrl+F)">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSearchBar((prev) => !prev)}
+                title="Search (Ctrl+F)"
+              >
                 <SearchIcon className="w-4 h-4" />
                 {!showSearchBar && <span className="ml-2">Search</span>}
               </Button>

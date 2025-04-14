@@ -32,6 +32,13 @@ const schema = defineSchema({
     .index("by_user", ["userId"])
     .index("by_note", ["noteId"])
     .index("by_user_and_note", ["userId", "noteId"]),
+  conceptMaps: defineTable({
+    nodes: v.array(v.any()),
+    edges: v.array(v.any()),
+    userId: v.string(),
+    noteId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
   // New table for tests
   tests: defineTable({
     title: v.optional(v.string()),

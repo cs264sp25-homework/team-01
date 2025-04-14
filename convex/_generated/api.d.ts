@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
+import type * as conceptMap from "../conceptMap.js";
 import type * as hello from "../hello.js";
 import type * as http from "../http.js";
 import type * as notes from "../notes.js";
@@ -34,6 +35,7 @@ import type * as tests from "../tests.js";
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
+  conceptMap: typeof conceptMap;
   hello: typeof hello;
   http: typeof http;
   notes: typeof notes;
