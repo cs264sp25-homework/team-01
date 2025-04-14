@@ -245,6 +245,9 @@ dependencies:
   fzf:
     specifier: 0.5.2
     version: 0.5.2
+  html-to-image:
+    specifier: ^1.11.13
+    version: 1.11.13
   html2canvas:
     specifier: ^1.4.1
     version: 1.4.1
@@ -5501,6 +5504,10 @@ packages:
 
   /html-entities@2.5.3:
     resolution: {integrity: sha512-D3AfvN7SjhTgBSA8L1BN4FpPzuEd06uy4lHwSoRWr0lndi9BKaNzPLKGOWZ2ocSGguozr08TTb2jhCLHaemruw==}
+    dev: false
+
+  /html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
     dev: false
 
   /html2canvas@1.4.1:

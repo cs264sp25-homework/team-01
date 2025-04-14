@@ -2,6 +2,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import OpenAI from "openai";
+import { api } from "./_generated/api";
 
 // Organize notes using OpenAI
 export const organizeNotes = action({
@@ -262,8 +263,9 @@ export const completeText = action({
 export const generateConceptMap = action({
   args: {
     content: v.string(),
+    noteId: v.string(),
   },
-  handler: async (_, args) => {
+  handler: async (ctx, args) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new ConvexError({
@@ -322,12 +324,17 @@ export const generateConceptMap = action({
             Rules:
             1. Node IDs must be unique strings
             2. Edge sources and targets must reference existing node IDs
-            3. Position coordinates should create a readable layout
+            3. Position coordinates should create a readable layout:
+               - Ensure nodes are at least 200px apart horizontally and 150px apart vertically
+               - Consider edge label space (leave at least 100px between nodes connected by labeled edges)
+               - Position nodes on a grid-like layout when possible
+               - Offset nodes slightly to avoid perfect alignment that could cause overlap
             4. Main concepts should be central
             5. Related concepts should be connected with meaningful edges
             6. Include 5-15 nodes depending on content complexity
-            7. Do not include any explanation or text outside the JSON structure
-            8. Make sure the output is valid JSON that can be parsed
+            7. Keep edge labels short and concise (1-3 words maximum)
+            8. Do not include any explanation or text outside the JSON structure
+            9. Make sure the output is valid JSON that can be parsed
             `
           },
           {
@@ -369,6 +376,13 @@ export const generateConceptMap = action({
         if (parsed.nodes.length === 0) {
           throw new Error("No nodes returned in concept map");
         }
+        
+        // Store the concept map in the database
+        await ctx.runMutation(api.conceptMap.storeConceptMap, {
+          nodes: parsed.nodes,
+          edges: parsed.edges,
+          noteId: args.noteId,
+        });
         
         return { conceptMap: parsed };
       } catch (e) {
