@@ -12,15 +12,13 @@ import {
 } from '@udecode/plate/react';
 import {
   Album,
-  BadgeHelp,
   Check,
   CornerUpLeft,
-  FeatherIcon,
   ListEnd,
   ListMinus,
   ListPlus,
   PenLine,
-  SmileIcon,
+
   Wand,
   X,
 } from 'lucide-react';
@@ -73,29 +71,6 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     onSelect: ({ editor }) => {
       editor.getTransforms(AIPlugin).ai.undo();
       editor.getApi(AIChatPlugin).aiChat.hide();
-    },
-  },
-  emojify: {
-    icon: <SmileIcon />,
-    label: 'Emojify',
-    value: 'emojify',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
-        prompt: 'Emojify',
-      });
-    },
-  },
-  explain: {
-    icon: <BadgeHelp />,
-    label: 'Explain',
-    value: 'explain',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
-        prompt: {
-          default: 'Explain {editor}',
-          selecting: 'Explain',
-        },
-      });
     },
   },
   fixSpelling: {
@@ -154,16 +129,6 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
       void editor.getTransforms(AIChatPlugin).aiChat.replaceSelection(aiEditor);
     },
   },
-  simplifyLanguage: {
-    icon: <FeatherIcon />,
-    label: 'Simplify language',
-    value: 'simplifyLanguage',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
-        prompt: 'Simplify the language',
-      });
-    },
-  },
   summarize: {
     icon: <Album />,
     label: 'Add a summary',
@@ -218,7 +183,6 @@ const menuStateItems: Record<
       items: [
         aiChatItems.continueWrite,
         aiChatItems.summarize,
-        aiChatItems.explain,
       ],
     },
   ],
@@ -231,11 +195,10 @@ const menuStateItems: Record<
     {
       items: [
         aiChatItems.improveWriting,
-        aiChatItems.emojify,
         aiChatItems.makeLonger,
         aiChatItems.makeShorter,
         aiChatItems.fixSpelling,
-        aiChatItems.simplifyLanguage,
+        aiChatItems.summarize,
       ],
     },
   ],
