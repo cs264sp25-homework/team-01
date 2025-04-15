@@ -46,12 +46,12 @@ export function PlateEditor({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(true);
   const [isOrganizing, setIsOrganizing] = useState(false);
-  const [currentContent, setCurrentContent] = useState(initialContent ? JSON.parse(initialContent) : [{ type: "p", children: [{ text: "" }] }]);
-  const [id, setId] = useState('');
+  const [currentContent, _] = useState(initialContent ? JSON.parse(initialContent) : [{ type: "p", children: [{ text: "" }] }]);
+  
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
-  const editorRef = React.useRef<typeof Editor | null>(null);
+  
 
   // Create the editor and include the custom search plugin as part of the override.
   const editor = useCreateEditor({
@@ -79,9 +79,7 @@ export function PlateEditor({
     (isManualSave = true) => {
       if (onUpdate) {
         if (!isManualSave) setIsAutoSaving(true);
-        console.log('[DEBUG] Before save - editor children:', editor.children);
         const content = JSON.stringify(editor.children);
-        console.log('[DEBUG] Saving content:', content);
         Promise.resolve().then(() => {
           onUpdate(content, isManualSave);
           setLastSavedAt(new Date());
@@ -110,12 +108,9 @@ export function PlateEditor({
         setTimeout(() => {
           try {
             // Look for the Plate component in React fibers
-            const plateElements = document.querySelectorAll('[data-slate-plugin-plate]');
-            if (plateElements.length > 0) {
-              console.log('[PlateEditor] Found Plate element, attempting to store instance');
-            }
+            document.querySelectorAll('[data-slate-plugin-plate]');
           } catch (e) {
-            console.error('[PlateEditor] Error finding Plate instance:', e);
+            // Error finding Plate instance
           }
         }, 500);
       }
@@ -155,7 +150,6 @@ export function PlateEditor({
   // Listen for external changes from plugins (like copilot)
   useEffect(() => {
     const handleExternalChange = () => {
-      console.log('Detected external change from plugin');
       // Mark as dirty and trigger autosave if enabled
       setIsDirty(true);
       if (autoSave) debouncedSave();
@@ -165,7 +159,6 @@ export function PlateEditor({
     const handleSaveContent = (e: Event) => {
       const customEvent = e as CustomEvent;
       const isManual = customEvent.detail?.manual === true;
-      console.log(`[PlateEditor] Direct save content request (manual: ${isManual})`);
       saveContent(isManual);
     };
     
@@ -173,9 +166,7 @@ export function PlateEditor({
     const handleForceSave = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.content && onUpdate) {
-        console.log('[PlateEditor] Force save with specific content');
         const content = JSON.stringify(customEvent.detail.content);
-        console.log('[DEBUG] Force saving content:', content);
         onUpdate(content, false);
         setLastSavedAt(new Date());
         setIsDirty(false);
@@ -236,12 +227,12 @@ export function PlateEditor({
   }, [editor, handleEditorChange, organizeNotesAction]);
 
   // Save content to local storage when it changes
-  const handleContentChange = React.useCallback((newValue: any) => {
-    // Only save if the content is different from the current content
-    if (JSON.stringify(newValue) !== JSON.stringify(currentContent)) {
-      setCurrentContent(newValue);
-    }
-  }, [currentContent]);
+  // const handleContentChange = React.useCallback((newValue: any) => {
+  //   // Only save if the content is different from the current content
+  //   if (JSON.stringify(newValue) !== JSON.stringify(currentContent)) {
+  //     setCurrentContent(newValue);
+  //   }
+  // }, [currentContent]);
 
   return (
     <DndProvider backend={HTML5Backend}>
