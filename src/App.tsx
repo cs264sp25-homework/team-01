@@ -10,7 +10,6 @@ import { Id } from "../convex/_generated/dataModel";
 import "./App.css";
 import { RenameModal } from "./notes/components/RenameModal";
 import { Toaster } from "react-hot-toast";
-import { Switch } from "../src/ui/switch";
 
 interface Note {
   _id: Id<"notes">;
@@ -18,6 +17,7 @@ interface Note {
   title: string;
   content: string;
   updatedAt: number;
+  contentPreview?: string;
 }
 
 function MainContent() {
@@ -25,7 +25,6 @@ function MainContent() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isFullTextSearch, setIsFullTextSearch] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const createNote = useMutation(api.notes.create);
@@ -34,9 +33,7 @@ function MainContent() {
   const notes = useQuery(api.notes.list);
   const searchResults = useQuery(
     api.notes.search,
-    searchQuery.length >= 2 && isFullTextSearch
-      ? { query: searchQuery }
-      : "skip"
+    searchQuery.length >= 2 ? { query: searchQuery } : "skip"
   );
 
   // Filter notes based on search query
@@ -45,15 +42,8 @@ function MainContent() {
       return notes;
     }
     
-    if (isFullTextSearch && searchResults) {
-      return searchResults;
-    }
-    
-    // Title-only search (client-side filtering)
-    return notes?.filter(note => 
-      note.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [notes, searchQuery, isFullTextSearch, searchResults]);
+    return searchResults || [];
+  }, [notes, searchQuery, searchResults]);
 
   useEffect(() => {
     console.log("MainContent mounted");
@@ -110,7 +100,7 @@ function MainContent() {
           <h2 className="text-xl font-medium text-gray-900">My Notes</h2>
           
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* Search Bar with Full-Text Toggle */}
+            {/* Search Bar */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -119,7 +109,7 @@ function MainContent() {
               </div>
               <input
                 type="text"
-                placeholder={isFullTextSearch ? "Search in all notes..." : "Search note titles..."}
+                placeholder="Search in notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="block w-full py-2 pl-10 pr-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent"
@@ -134,16 +124,6 @@ function MainContent() {
                   </svg>
                 </button>
               )}
-            </div>
-            
-            {/* Full-text search toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Full-text search</span>
-              <Switch
-                checked={isFullTextSearch}
-                onCheckedChange={setIsFullTextSearch}
-                aria-label="Toggle full-text search"
-              />
             </div>
             
             <button
@@ -204,7 +184,7 @@ function MainContent() {
                   </button>
                 </div>
                 <h3 className="mb-2 text-lg font-medium text-gray-900">{note.title}</h3>
-                {isFullTextSearch && searchQuery && note.contentPreview && (
+                {searchQuery && note.contentPreview && !note.title.toLowerCase().includes(searchQuery.toLowerCase()) && (
                   <p className="mb-2 text-sm text-gray-600">
                     <span className="font-medium">Match:</span> {note.contentPreview}...
                   </p>
