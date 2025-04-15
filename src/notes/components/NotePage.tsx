@@ -15,7 +15,7 @@ import TestGeneratorSidebar from "../../editor/components/TestGeneratorSidebar";
 import ConceptMapSidebar from "../../editor/components/ConceptMapSidebar";
 import { BookOpenIcon } from "lucide-react";
 import { useNotes } from "../hooks/useNotes";
-import { searchHighlight } from "../../editor/plugins/searchHighlightPlugin";
+import { navigateToText } from "../hooks/textNavigation";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -114,100 +114,6 @@ export function NotePage() {
       if (success) {
         navigate("/");
       }
-    }
-  };
-
-  const navigateToText = (text: string) => {
-    // Get the editor element
-    const editorEl = document.querySelector('[data-slate-editor="true"]') as HTMLElement;
-    
-    if (!editorEl || !text) {
-      console.error("Editor element not found or empty text");
-      return;
-    }
-    
-    // Clear any existing highlights first
-    searchHighlight.clear(editorEl);
-    
-    // Try exact match first
-    const { matchCount, matches } = searchHighlight.highlight(editorEl, text, false);
-    
-    // If matches were found, highlight the first one
-    if (matchCount > 0 && matches.length > 0) {
-      searchHighlight.highlightCurrent(matches[0]);
-      return;
-    }
-    
-    // If no exact match, try to find the best matching substring
-    const findBestMatch = () => {
-      // Get all text content from the editor
-      const editorText = editorEl.textContent || "";
-      
-      // Clean up the source text (remove extra spaces)
-      const cleanSource = text.replace(/\s+/g, ' ').trim();
-      const cleanEditor = editorText.replace(/\s+/g, ' ').trim();
-      
-      // Extract significant phrases (5+ words) from the source text
-      const phrases = cleanSource
-        .split(/[.!?;]/)
-        .map(phrase => phrase.trim())
-        .filter(phrase => phrase.length > 20);
-      
-      // Try each significant phrase
-      for (const phrase of phrases) {
-        const { matchCount, matches } = searchHighlight.highlight(editorEl, phrase, false);
-        if (matchCount > 0 && matches.length > 0) {
-          searchHighlight.highlightCurrent(matches[0]);
-          return true;
-        }
-        searchHighlight.clear(editorEl);
-      }
-      
-      // If no phrase matches, try individual words
-      const sourceWords = cleanSource.split(/\s+/).filter(word => word.length > 5);
-      const editorWords = cleanEditor.split(/\s+/);
-      
-      // Find the most unique words from the source
-      const uniqueWords = sourceWords
-        .filter(word => word.length > 5)
-        .sort((a, b) => {
-          // Count occurrences in editor text
-          const aCount = editorWords.filter(w => w.toLowerCase() === a.toLowerCase()).length;
-          const bCount = editorWords.filter(w => w.toLowerCase() === b.toLowerCase()).length;
-          // Prefer words that appear less frequently (more unique)
-          return aCount - bCount;
-        })
-        .slice(0, 5); // Take top 5 most unique words
-      
-      // Try to find a section with multiple unique words close together
-      for (let i = 0; i < editorWords.length - 10; i++) {
-        const section = editorWords.slice(i, i + 15).join(' ');
-        let matchCount = 0;
-        
-        for (const word of uniqueWords) {
-          if (section.toLowerCase().includes(word.toLowerCase())) {
-            matchCount++;
-          }
-        }
-        
-        if (matchCount >= 2) { // If at least 2 unique words are found close together
-          const { matchCount, matches } = searchHighlight.highlight(editorEl, section, false);
-          if (matchCount > 0 && matches.length > 0) {
-            searchHighlight.highlightCurrent(matches[0]);
-            return true;
-          }
-          searchHighlight.clear(editorEl);
-        }
-      }
-      
-      return false;
-    };
-    
-    // Try to find the best match
-    const foundMatch = findBestMatch();
-    
-    if (!foundMatch) {
-      console.log("No good matches found for source text:", text);
     }
   };
 
