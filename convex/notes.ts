@@ -175,4 +175,97 @@ export const rename = mutation({
     
     return args.id;
   },
-}); 
+});
+
+// Search notes by title and content
+export const search = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    
+    const userId = identity.tokenIdentifier.split("|")[1];
+    const searchTerm = args.query.toLowerCase();
+    
+    // Get all notes for the user
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    
+    // Filter and process notes that match the search term
+    return notes
+      .filter(note => {
+        const titleMatch = note.title.toLowerCase().includes(searchTerm);
+        
+        // Parse content if it exists and is a string
+        let contentMatch = false;
+        if (note.content && typeof note.content === 'string') {
+          try {
+            // Try to parse JSON content
+            const parsedContent = JSON.parse(note.content);
+            
+            // Extract text from the content structure
+            const extractedText = extractTextFromContent(parsedContent);
+            contentMatch = extractedText.toLowerCase().includes(searchTerm);
+          } catch (e) {
+            // If parsing fails, try direct string matching
+            contentMatch = note.content.toLowerCase().includes(searchTerm);
+          }
+        }
+        
+        return titleMatch || contentMatch;
+      })
+      .map(note => {
+        // Add a content preview for matching notes
+        let contentPreview = "";
+        
+        if (note.content && typeof note.content === 'string') {
+          try {
+            const parsedContent = JSON.parse(note.content);
+            const extractedText = extractTextFromContent(parsedContent);
+            
+            // Find the context around the match
+            const matchIndex = extractedText.toLowerCase().indexOf(searchTerm);
+            if (matchIndex >= 0) {
+              // Get some context around the match
+              const startIndex = Math.max(0, matchIndex - 40);
+              const endIndex = Math.min(extractedText.length, matchIndex + searchTerm.length + 40);
+              contentPreview = extractedText.substring(startIndex, endIndex);
+              
+              // Add ellipsis if we're not at the beginning/end
+              if (startIndex > 0) contentPreview = "..." + contentPreview;
+              if (endIndex < extractedText.length) contentPreview = contentPreview + "...";
+            }
+          } catch (e) {
+            // Fallback for non-JSON content
+            contentPreview = "";
+          }
+        }
+        
+        return {
+          ...note,
+          contentPreview
+        };
+      });
+  },
+});
+
+// Helper function to extract text from the Plate editor content structure
+function extractTextFromContent(content: any[]): string {
+  if (!Array.isArray(content)) return "";
+  
+  return content.map(node => {
+    // Handle text nodes
+    if (node.text) return node.text;
+    
+    // Handle paragraph nodes and other containers
+    if (node.children && Array.isArray(node.children)) {
+      return extractTextFromContent(node.children);
+    }
+    
+    return "";
+  }).join(" ");
+} 

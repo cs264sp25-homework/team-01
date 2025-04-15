@@ -4,17 +4,23 @@ import { SignOut } from "../../auth/components/sign-out";
 import { PlateEditor } from "../../editor/components/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
 import ChatSidebar from "../../editor/components/ChatSidebar";
-import { MessageCircleIcon, Loader2 } from "lucide-react";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../ui/resizable";
+import { MessageCircleIcon, Loader2, NetworkIcon } from "lucide-react";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "../../ui/resizable";
 import { Button } from "@/ui/button";
 import TestGeneratorSidebar from "../../editor/components/TestGeneratorSidebar";
+import ConceptMapSidebar from "../../editor/components/ConceptMapSidebar";
 import { BookOpenIcon } from "lucide-react";
 import { useNotes } from "../hooks/useNotes";
+import { navigateToText } from "../hooks/textNavigation";
 
 export function NotePage() {
   const { noteId } = useParams();
   const navigate = useNavigate();
-  
+
   // Use the notes hook
   const {
     note,
@@ -25,11 +31,13 @@ export function NotePage() {
     isContentSaving,
     handleUpdateNote,
     handleRename,
-    handleDelete
+    handleDelete,
   } = useNotes(noteId);
-  
+
   // Sidebar states
-  const [activeSidebar, setActiveSidebar] = useState<"chat" | "test" | null>(null);
+  const [activeSidebar, setActiveSidebar] = useState<
+    "chat" | "test" | "concept-map" | null
+  >(null);
   const resizableRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(64); // Default height
@@ -41,6 +49,10 @@ export function NotePage() {
 
   const toggleTestSidebar = () => {
     setActiveSidebar(activeSidebar === "test" ? null : "test");
+  };
+
+  const toggleConceptMapSidebar = () => {
+    setActiveSidebar(activeSidebar === "concept-map" ? null : "concept-map");
   };
 
   const closeSidebars = () => {
@@ -56,23 +68,41 @@ export function NotePage() {
     };
 
     updateHeaderHeight();
-    window.addEventListener('resize', updateHeaderHeight);
-    
+    window.addEventListener("resize", updateHeaderHeight);
+
     return () => {
-      window.removeEventListener('resize', updateHeaderHeight);
+      window.removeEventListener("resize", updateHeaderHeight);
     };
   }, []);
 
-  // Listen for custom event to show test generator
+  // Listen for custom events to show sidebars
   useEffect(() => {
     const handleShowTestGenerator = () => {
       setActiveSidebar("test");
     };
 
-    window.addEventListener('showTestGenerator', handleShowTestGenerator as EventListener);
+    const handleShowConceptMap = () => {
+      setActiveSidebar("concept-map");
+    };
+
+    window.addEventListener(
+      "showTestGenerator",
+      handleShowTestGenerator as EventListener
+    );
+    window.addEventListener(
+      "showConceptMap",
+      handleShowConceptMap as EventListener
+    );
 
     return () => {
-      window.removeEventListener('showTestGenerator', handleShowTestGenerator as EventListener);
+      window.removeEventListener(
+        "showTestGenerator",
+        handleShowTestGenerator as EventListener
+      );
+      window.removeEventListener(
+        "showConceptMap",
+        handleShowConceptMap as EventListener
+      );
     };
   }, []);
 
@@ -173,55 +203,66 @@ export function NotePage() {
                 />
               </svg>
             </button>
-            
+
             {/* AI Chat Toggle Button */}
-            <Button 
+            <Button
               variant={activeSidebar === "chat" ? "default" : "ghost"}
-              size="icon" 
+              size="icon"
               onClick={toggleChatSidebar}
               className="ml-2"
               title="Toggle AI Chat"
             >
               <MessageCircleIcon className="w-5 h-5" />
             </Button>
-            
+
             {/* Test Generator Toggle Button */}
-            <Button 
+            <Button
               variant={activeSidebar === "test" ? "default" : "ghost"}
-              size="icon" 
+              size="icon"
               onClick={toggleTestSidebar}
               className="ml-2"
               title="Generate Test Questions"
             >
               <BookOpenIcon className="w-5 h-5" />
             </Button>
+
+            {/* Concept Map Toggle Button */}
+            <Button
+              variant={activeSidebar === "concept-map" ? "default" : "ghost"}
+              size="icon"
+              onClick={toggleConceptMapSidebar}
+              className="ml-2"
+              title="View Concept Map"
+            >
+              <NetworkIcon className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main content area - takes remaining height */}
-      <div 
-        className="flex-1 overflow-hidden" 
+      <div
+        className="flex-1 overflow-hidden"
         style={{ height: `calc(100vh - ${headerHeight}px)` }}
       >
         <div className="h-full px-4 mx-auto max-w-7xl" ref={resizableRef}>
           <p className="py-2 text-sm text-gray-500">
             Last edited: {new Date(note.updatedAt).toLocaleString()}
           </p>
-          
+
           {/* Resizable panel layout */}
-          <ResizablePanelGroup 
-            direction="horizontal" 
+          <ResizablePanelGroup
+            direction="horizontal"
             className="h-[calc(100%-2rem)]"
           >
             {/* Editor Panel */}
-            <ResizablePanel 
-              defaultSize={activeSidebar ? 60 : 100} 
+            <ResizablePanel
+              defaultSize={activeSidebar ? 60 : 100}
               minSize={30}
               className="transition-all duration-200"
             >
               <div className="h-full overflow-auto border border-gray-200 rounded-md">
-                <PlateEditor 
+                <PlateEditor
                   initialContent={note.content}
                   onUpdate={handleUpdateNote}
                   autoSave={true}
@@ -231,23 +272,27 @@ export function NotePage() {
             </ResizablePanel>
 
             {/* Resizable Handle - only shown when a sidebar is open */}
-            {activeSidebar && (
-              <ResizableHandle withHandle />
-            )}
+            {activeSidebar && <ResizableHandle withHandle />}
 
             {/* Sidebar Panel - conditionally rendered based on active sidebar */}
             {activeSidebar && (
               <ResizablePanel defaultSize={40} minSize={25} maxSize={70}>
                 <div className="flex-shrink-0 h-full border border-gray-200 rounded-md">
                   {activeSidebar === "chat" ? (
-                    <ChatSidebar 
-                      onClose={closeSidebars} 
+                    <ChatSidebar
+                      onClose={closeSidebars}
                       noteId={noteId as string}
                     />
+                  ) : activeSidebar === "test" ? (
+                    <TestGeneratorSidebar
+                      onClose={closeSidebars}
+                      noteId={noteId as Id<"notes">}
+                      navigateToText={navigateToText}
+                    />
                   ) : (
-                    <TestGeneratorSidebar 
-                      onClose={closeSidebars} 
-                      noteId={noteId as Id<"notes">} 
+                    <ConceptMapSidebar
+                      onClose={closeSidebars}
+                      noteId={noteId as Id<"notes">}
                     />
                   )}
                 </div>
