@@ -10,6 +10,7 @@ import { Id } from "../convex/_generated/dataModel";
 import "./App.css";
 import { RenameModal } from "./notes/components/RenameModal";
 import { Toaster } from "react-hot-toast";
+import { Switch } from "../src/ui/switch";
 
 interface Note {
   _id: Id<"notes">;
@@ -25,6 +26,7 @@ function MainContent() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [useSemanticSearch, setUseSemanticSearch] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const createNote = useMutation(api.notes.create);
@@ -124,6 +126,17 @@ function MainContent() {
                   </svg>
                 </button>
               )}
+            </div>
+            
+            {/* Semantic search toggle (disabled for now) */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Semantic search</span>
+              <Switch
+                checked={useSemanticSearch}
+                onCheckedChange={setUseSemanticSearch}
+                aria-label="Toggle semantic search"
+                disabled
+              />
             </div>
             
             <button
