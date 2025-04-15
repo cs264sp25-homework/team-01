@@ -31,7 +31,6 @@ import {
   DialogTitle 
 } from '@/plate-ui/dialog';
 import { Input } from '@/plate-ui/input';
-import React from 'react';
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
