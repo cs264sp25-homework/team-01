@@ -19,28 +19,130 @@ let runningRequest = false;
 let typingTimer: ReturnType<typeof setTimeout> | null = null;
 let editorReference: any = null;
 
+// Expose variables globally for ghost-text.tsx
+if (typeof window !== 'undefined') {
+  (window as any).ghostTextIsActive = false;
+  (window as any).ghostTextCurrentText = '';
+  (window as any).ghostTextSuggestions = {};
+  
+  // Store editor reference globally for direct access
+  (window as any).__STORE_EDITOR_REF__ = (editor: any) => {
+    if (editor) {
+      editorReference = editor;
+      console.log('[Copilot] Stored editor reference');
+    }
+  };
+  
+  // Reset function to clear ghost text state
+  (window as any).resetGhostText = () => {
+    isActive = false;
+    currentText = '';
+    blockSuggestions = {};
+    
+    // Update global variables
+    (window as any).ghostTextIsActive = false;
+    (window as any).ghostTextCurrentText = '';
+    (window as any).ghostTextSuggestions = {};
+    
+    // Force refresh editor
+    const editor = getEditorInstance();
+    if (editor && editor.selection) {
+      const oldSelection = { ...editor.selection };
+      editor.selection = null;
+      setTimeout(() => {
+        editor.selection = oldSelection;
+      }, 0);
+    }
+    
+    return true;
+  };
+}
+
 // Function to find the current editor instance
 function getEditorInstance() {
-  // Try the global reference first
+  // Try the saved reference first
+  if (editorReference) {
+    console.log('[Copilot] Using stored editor reference');
+    return editorReference;
+  }
+  
+  // Try the global reference next
   const globalEditor = (window as any).__PLATE_EDITOR__;
   if (globalEditor) {
+    console.log('[Copilot] Using global __PLATE_EDITOR__ reference');
     editorReference = globalEditor;
     return globalEditor;
   }
 
-  // Try the saved reference
-  if (editorReference) {
-    return editorReference;
-  }
-
-  // Try to find editor by looking for data attributes in DOM
-  const plateEditorElements = document.querySelectorAll('[data-slate-editor="true"]');
-  if (plateEditorElements.length > 0) {
-    const editorElement = plateEditorElements[0];
-    return null;
+  // Try to find editor components
+  try {
+    // Try using ReactDOM to access the editor component
+    const editableElements = document.querySelectorAll('[contenteditable="true"][data-slate-editor="true"]');
+    console.log('[Copilot] Found slate editor elements:', editableElements.length);
+    
+    if (editableElements.length > 0) {
+      // Try to find the React fiber
+      if ((window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+        console.log('[Copilot] Attempting to find React component for editor');
+        // TODO: This is just a hint for a possible improvement
+      }
+    }
+  } catch (e) {
+    console.error('[Copilot] Error finding editor components:', e);
   }
 
   return null;
+}
+
+// Direct text insertion function that doesn't require editor instance
+function directInsertText(text: string) {
+  console.log('[Copilot] Attempting direct text insertion:', text);
+  try {
+    // Get the current selection
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      console.error('[Copilot] No selection available for direct text insertion');
+      return false;
+    }
+    
+    // Get the current range
+    const range = selection.getRangeAt(0);
+    
+    // Create and insert text node
+    const textNode = document.createTextNode(text);
+    range.deleteContents();
+    range.insertNode(textNode);
+    
+    // Position cursor after inserted text
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Try to find the editor element
+    const editorElement = document.querySelector('[data-slate-editor="true"]');
+    if (editorElement) {
+      // Trigger input event to notify editor of changes
+      const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        data: text
+      });
+      editorElement.dispatchEvent(inputEvent);
+      
+      // Also dispatch a change event
+      const changeEvent = new Event('change', {
+        bubbles: true
+      });
+      editorElement.dispatchEvent(changeEvent);
+    }
+    
+    console.log('[Copilot] Direct text insertion succeeded');
+    return true;
+  } catch (e) {
+    console.error('[Copilot] Direct text insertion failed:', e);
+    return false;
+  }
 }
 
 // Generate a real suggestion based on note content
@@ -75,6 +177,10 @@ async function generateSuggestion(prompt: string) {
       isActive = true;
       currentText = suggestion;
       
+      // Update global variables for ghost-text.tsx
+      (window as any).ghostTextIsActive = true;
+      (window as any).ghostTextCurrentText = suggestion;
+      
       // Get editor to find current block
       const editor = getEditorInstance();
       if (editor && editor.selection) {
@@ -85,6 +191,9 @@ async function generateSuggestion(prompt: string) {
           
           // Update block suggestions
           blockSuggestions[blockId] = suggestion;
+          
+          // Update global variable
+          (window as any).ghostTextSuggestions = { ...blockSuggestions };
           
           // Force editor refresh to show suggestion
           try {
@@ -100,6 +209,7 @@ async function generateSuggestion(prompt: string) {
       } else {
         // As a fallback, store the suggestion for block 0
         blockSuggestions['0'] = suggestion;
+        (window as any).ghostTextSuggestions = { ...blockSuggestions };
       }
 
       // Try direct DOM injection since React method might not be working
@@ -168,6 +278,84 @@ export const createCopilotPlugin = () => {
     // Start editor checks
     startEditorChecks();
     
+    // Add global tab key interceptor with highest priority
+    document.addEventListener('keydown', (e) => {
+      // Only handle tab when suggestion is active
+      if (e.key === 'Tab' && isActive) {
+        console.log('[Copilot] Intercepting Tab key with highest priority');
+        
+        // Stop all other handlers from receiving this event
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Get the text to insert
+        let textToInsert = currentText;
+        const editor = getEditorInstance();
+        
+        if (editor && editor.selection?.anchor?.path) {
+          const blockId = String(editor.selection.anchor.path[0]);
+          textToInsert = blockSuggestions[blockId] || currentText;
+        }
+        
+        if (!textToInsert) {
+          console.error('[Copilot] No text to insert');
+          return false;
+        }
+        
+        // Force executing our handler
+        setTimeout(() => {
+          // Try direct DOM insertion first (most reliable)
+          console.log('[Copilot] Attempting text insertion with text:', textToInsert);
+          
+          const insertSuccess = directInsertText(textToInsert);
+          
+          if (insertSuccess) {
+            // Clear the suggestion state
+            isActive = false;
+            currentText = '';
+            blockSuggestions = {};
+            
+            // Update global variables
+            (window as any).ghostTextIsActive = false;
+            (window as any).ghostTextCurrentText = '';
+            (window as any).ghostTextSuggestions = {};
+            
+            return;
+          }
+          
+          // Fall back to editor API methods
+          if (editor) {
+            try {
+              if (typeof editor.insertText === 'function') {
+                editor.insertText(textToInsert);
+                console.log('[Copilot] Inserted text via editor.insertText');
+              } else if (editor.api?.insertText) {
+                editor.api.insertText(textToInsert);
+                console.log('[Copilot] Inserted text via editor.api.insertText');
+              } else {
+                console.error('[Copilot] No method to insert text found on editor');
+              }
+              
+              // Clear the suggestion state
+              isActive = false;
+              currentText = '';
+              blockSuggestions = {};
+              
+              // Update global variables
+              (window as any).ghostTextIsActive = false;
+              (window as any).ghostTextCurrentText = '';
+              (window as any).ghostTextSuggestions = {};
+            } catch (err) {
+              console.error('[Copilot] Editor insertion failed:', err);
+            }
+          }
+        }, 0);
+        
+        return false;
+      }
+    }, { capture: true });
+    
     // Add keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       // Ctrl+G to manually trigger suggestion
@@ -206,31 +394,6 @@ export const createCopilotPlugin = () => {
         }
       }
       
-      // Tab to accept suggestion
-      if (e.key === 'Tab' && isActive) {
-        e.preventDefault();
-        
-        const editor = getEditorInstance();
-        if (editor && typeof editor.insertText === 'function') {
-          // Find the current block suggestion
-          let textToInsert = currentText;
-          if (editor.selection?.anchor?.path) {
-            const blockId = String(editor.selection.anchor.path[0]);
-            textToInsert = blockSuggestions[blockId] || currentText;
-          }
-          
-          // Insert the text
-          if (textToInsert) {
-            editor.insertText(textToInsert);
-          }
-          
-          // Reset state
-          isActive = false;
-          currentText = '';
-          blockSuggestions = {};
-        }
-      }
-      
       // Escape to cancel suggestion
       if (e.key === 'Escape' && isActive) {
         e.preventDefault();
@@ -239,6 +402,11 @@ export const createCopilotPlugin = () => {
         isActive = false;
         currentText = '';
         blockSuggestions = {};
+        
+        // Update global variables
+        (window as any).ghostTextIsActive = false;
+        (window as any).ghostTextCurrentText = '';
+        (window as any).ghostTextSuggestions = {};
         
         // Force refresh
         const editor = getEditorInstance();
@@ -357,6 +525,69 @@ export const CopilotPlugin = createCopilotPlugin();
 
 // Export as an array for easy import
 export const copilotPlugins = [CopilotPlugin];
+
+// Expose a global function to force accept the current suggestion
+if (typeof window !== 'undefined') {
+  (window as any).acceptCurrentSuggestion = () => {
+    if (isActive) {
+      const editor = getEditorInstance();
+      if (editor) {
+        // Find the current block suggestion
+        let textToInsert = currentText;
+        if (editor.selection?.anchor?.path) {
+          const blockId = String(editor.selection.anchor.path[0]);
+          textToInsert = blockSuggestions[blockId] || currentText;
+        }
+          
+        // Insert the text - try multiple methods to ensure it works
+        if (textToInsert) {
+          try {
+            console.log('Accepting suggestion via global method:', textToInsert);
+            
+            // Method 1: Use insertText directly
+            if (typeof editor.insertText === 'function') {
+              editor.insertText(textToInsert);
+            } 
+            // Method 2: Use the editor API if available
+            else if (editor.api?.insertText) {
+              editor.api.insertText(textToInsert);
+            }
+            // Method 3: Use the Slate API
+            else if (editor.insertFragment) {
+              const fragment = [{ text: textToInsert }];
+              editor.insertFragment(fragment);
+            }
+            // Method 4: Manual DOM insertion as fallback
+            else if (window.getSelection) {
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(textToInsert));
+              }
+            }
+            
+            // Force editor to update
+            setTimeout(() => {
+              const event = new Event('input', { bubbles: true });
+              document.querySelector('[data-slate-editor="true"]')?.dispatchEvent(event);
+            }, 0);
+            
+            // Reset state
+            isActive = false;
+            currentText = '';
+            blockSuggestions = {};
+            
+            return true;
+          } catch (error) {
+            console.error('Error accepting suggestion:', error);
+          }
+        }
+      }
+    }
+    return false;
+  };
+}
 
 // Direct DOM injection fallback for ghost text
 if (typeof window !== 'undefined') {

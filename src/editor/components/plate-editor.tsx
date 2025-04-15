@@ -65,10 +65,15 @@ export function PlateEditor({
 
   // Set global editor reference for plugin access
   React.useEffect(() => {
-    if (editorRef.current) {
-      (window as any).__PLATE_EDITOR__ = editorRef.current;
+    if (editor) {
+      (window as any).__PLATE_EDITOR__ = editor;
+      
+      // Use the store function from copilot-plugin if available
+      if (typeof (window as any).__STORE_EDITOR_REF__ === 'function') {
+        (window as any).__STORE_EDITOR_REF__(editor);
+      }
     }
-  }, [editorRef.current]);
+  }, [editor]);
 
   const saveContent = useCallback(
     (isManualSave = true) => {

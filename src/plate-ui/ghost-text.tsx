@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useElement, usePluginOption } from '@udecode/plate/react';
+import { useElement } from '@udecode/plate/react';
 
 // Add a global function to test ghost text rendering directly
 if (typeof window !== 'undefined') {
@@ -47,21 +47,33 @@ const FORCE_VISIBLE = true;
 export const GhostText = () => {
   const element = useElement();
   
-  // Use string key for plugin to avoid reference issues
-  const isSuggested = usePluginOption(
-    'copilot', 
-    'isSuggested',
-    element?.id as string
-  );
+  // Access plugin options directly from window
+  const isSuggested = () => {
+    if (typeof window !== 'undefined') {
+      // Use the global variables from copilot-plugin.tsx
+      const isActive = (window as any).ghostTextIsActive;
+      const suggestions = (window as any).ghostTextSuggestions || {};
+      return isActive && suggestions[element?.id as string];
+    }
+    return false;
+  };
 
-  if (!isSuggested) return null;
+  if (!isSuggested()) return null;
 
   return <GhostTextContent />;
 };
 
 export function GhostTextContent() {
-  // Use string key for plugin
-  const suggestionText = usePluginOption('copilot', 'suggestionText');
+  // Get suggestion text from global state
+  const getSuggestionText = () => {
+    if (typeof window !== 'undefined') {
+      // Use global variable from copilot-plugin.tsx
+      return (window as any).ghostTextCurrentText || '';
+    }
+    return '';
+  };
+  
+  const suggestionText = getSuggestionText();
   
   if (!suggestionText) return null;
 
@@ -78,6 +90,7 @@ export function GhostTextContent() {
         margin: '0 1px',
         borderRadius: '2px',
       }}
+      data-ghost-text="true"
     >
       {suggestionText}
     </span>
