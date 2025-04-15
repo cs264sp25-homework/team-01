@@ -317,7 +317,7 @@ export function PlateEditor({
                 // Render accumulated text before processing child
                 const textWidth = maxWidth - (indent - margin);
                 const lines = doc.splitTextToSize(currentText, textWidth);
-                lines.forEach(line => {
+                lines.forEach((line: string) => {
                   if (yPos > pageHeight - margin) {
                     doc.addPage();
                     yPos = margin;
@@ -344,7 +344,7 @@ export function PlateEditor({
           if (currentText) {
             const textWidth = maxWidth - (indent - margin);
             const lines = doc.splitTextToSize(currentText, textWidth);
-            lines.forEach(line => {
+            lines.forEach((line: string) => {
               if (yPos > pageHeight - margin) {
                 doc.addPage();
                 yPos = margin;
