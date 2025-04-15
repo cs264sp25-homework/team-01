@@ -1,105 +1,98 @@
 'use client';
 
-import { faker } from '@faker-js/faker';
+import { useAction } from 'convex/react';
 import { useChat as useBaseChat } from 'ai/react';
-
+import { api } from '../../../convex/_generated/api';
+import { useEditorRef } from '@udecode/plate/react';
 
 export const useChat = () => {
-
-
+  // Get the Convex action
+  const processAICommand = useAction(api.openai.processAICommand);
+  const editor = useEditorRef();
+  
+  //todo figure out how to do this without useBaseChat cus deprecated
   return useBaseChat({
     id: 'editor',
     api: '/api/ai/command',
-    body: {
-      // !!! DEMO ONLY: need to figure out convex here
-    },
+    body: {},
     fetch: async (input, init) => {
-      const res = await fetch(input, init);
-
-      if (!res.ok) {
-        // Mock the API response. Remove it when you implement the route /api/ai/command
-        //we can call convex functions here
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        const stream = fakeStreamText();
-
-        return new Response(stream, {
+      try {
+        // Extract the prompt data from the request
+        const body = init?.body ? JSON.parse(init.body.toString()) : {};
+        const { prompt, messages } = body;
+        
+        // Determine the command type from the last message
+        const lastMessage = messages?.[messages.length - 1]?.content || prompt || '';
+        const commandType = determineCommandType(lastMessage);
+        
+        // Get editor content if available
+        let editorContent = '';
+        
+        if (editor && editor.children) {
+          // Get the current editor content
+          editorContent = JSON.stringify(editor.children);
+        }
+        
+        // Call the Convex action with the prompt and command type
+        const result = await processAICommand({
+          prompt: lastMessage,
+          commandType,
+          editorContent: editorContent || undefined
+        });
+        
+        // Convert the response to a readable stream in the format expected by the AI SDK
+        return createResponseFromText(result.text);
+      } catch (error) {
+        console.error("Error calling AI command:", error);
+        return new Response(JSON.stringify({ error: "Failed to process AI command" }), {
+          status: 500,
           headers: {
-            Connection: 'keep-alive',
-            'Content-Type': 'text/plain',
+            'Content-Type': 'application/json',
           },
         });
       }
-
-      return res;
     },
   });
 };
 
-// Used for testing. Remove it after implementing useChat api.
-const fakeStreamText = ({
-  chunkCount = 10,
-  streamProtocol = 'data',
-}: {
-  chunkCount?: number;
-  streamProtocol?: 'data' | 'text';
-} = {}) => {
-  // Create 3 blocks with different lengths
-  const blocks = [
-    Array.from({ length: chunkCount }, () => ({
-      delay: faker.number.int({ max: 100, min: 30 }),
-      texts: faker.lorem.words({ max: 3, min: 1 }) + ' ',
-    })),
-    Array.from({ length: chunkCount + 2 }, () => ({
-      delay: faker.number.int({ max: 100, min: 30 }),
-      texts: faker.lorem.words({ max: 3, min: 1 }) + ' ',
-    })),
-    Array.from({ length: chunkCount + 4 }, () => ({
-      delay: faker.number.int({ max: 100, min: 30 }),
-      texts: faker.lorem.words({ max: 3, min: 1 }) + ' ',
-    })),
-  ];
+// Helper to determine the type of command from the prompt text
+function determineCommandType(prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('improve writing')) return 'improveWriting';
+  if (lowerPrompt.includes('summarize') || lowerPrompt.includes('add a summary')) return 'summarize';
+  if (lowerPrompt.includes('make shorter')) return 'makeShorter';
+  if (lowerPrompt.includes('make longer')) return 'makeLonger';
+  if (lowerPrompt.includes('fix spelling') || lowerPrompt.includes('grammar')) return 'fixSpelling';
+  if (lowerPrompt.includes('continue writing')) return 'continueWrite';
+  
+  // Default to generic improvement
+  return 'improveWriting';
+}
 
+// Helper to create a readable stream from text, formatted for the AI SDK
+function createResponseFromText(text: string) {
   const encoder = new TextEncoder();
-
-  return new ReadableStream({
-    async start(controller) {
-      for (let i = 0; i < blocks.length; i++) {
-        const block = blocks[i];
-
-        // Stream the block content
-        for (const chunk of block) {
-          await new Promise((resolve) => setTimeout(resolve, chunk.delay));
-
-          if (streamProtocol === 'text') {
-            controller.enqueue(encoder.encode(chunk.texts));
-          } else {
-            controller.enqueue(
-              encoder.encode(`0:${JSON.stringify(chunk.texts)}\n`)
-            );
-          }
-        }
-
-        // Add double newline after each block except the last one
-        if (i < blocks.length - 1) {
-          if (streamProtocol === 'text') {
-            controller.enqueue(encoder.encode('\n\n'));
-          } else {
-            controller.enqueue(encoder.encode(`0:${JSON.stringify('\n\n')}\n`));
-          }
-        }
-      }
-
-      if (streamProtocol === 'data') {
+  
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        // Stream the text with the correct format
+        controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`));
+        
+        // Add the finish event
         controller.enqueue(
-          `d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":${blocks.reduce(
-            (sum, block) => sum + block.length,
-            0
-          )}}}\n`
+          encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":${text.length}}}\n`)
         );
-      }
-
-      controller.close();
-    },
-  });
-};
+        
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'text/plain',
+        'Connection': 'keep-alive',
+      },
+    }
+  );
+}

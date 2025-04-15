@@ -2,7 +2,6 @@ import { action, internalAction, internalMutation, internalQuery, query } from "
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import OpenAI from "openai";
-import { Configuration, OpenAIApi } from "openai-edge";
 
 // Organize notes using OpenAI
 export const organizeNotes = action({
@@ -215,11 +214,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const edgeConfiguration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openaiEdge = new OpenAIApi(edgeConfiguration);
-
 // This action completes text based on a prompt - used for the ghost text feature
 export const completeText = action({
   args: {
@@ -269,5 +263,118 @@ Text to complete: "${args.prompt}"`
     }
   },
 });
+
+// This action processes editor AI commands (improve writing, summarize, etc.)
+export const processAICommand = action({
+  args: {
+    prompt: v.string(),
+    commandType: v.string(),
+    editorContent: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const { prompt, commandType, editorContent } = args;
+      
+      // Build the system prompt based on the command type
+      let systemPrompt = getSystemPromptForCommand(commandType);
+      
+      // Get additional context if needed
+      const userPrompt = editorContent 
+        ? `${editorContent}\n\n${prompt}` 
+        : prompt;
+      
+      // Call OpenAI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+      
+      // Extract and return the response
+      const text = completion.choices[0]?.message?.content || "";
+      console.log(`AI Command (${commandType}) response:`, text.substring(0, 50) + (text.length > 50 ? "..." : ""));
+      
+      return { text };
+    } catch (error) {
+      console.error("Error processing AI command:", error);
+      return { 
+        error: "Failed to process AI command", 
+        text: "Sorry, there was an error processing your request. Please try again." 
+      };
+    }
+  },
+});
+
+// Helper to get the appropriate system prompt based on command type
+function getSystemPromptForCommand(commandType: string): string {
+  switch (commandType) {
+    case 'improveWriting':
+      return `You are an expert writing assistant. Your task is to improve the given text by:
+        1. Enhancing clarity and flow
+        2. Using more precise and engaging language
+        3. Fixing any grammatical or spelling errors
+        4. Maintaining the original meaning and tone
+        
+        Respond only with the improved version of the text. Don't include explanations.`;
+        
+    case 'summarize':
+      return `You are an expert summarization assistant. Your task is to create a concise summary of the given text by:
+        1. Identifying the main points and key arguments
+        2. Reducing the length while preserving essential information
+        3. Creating a coherent, readable summary
+        4. Maintaining the original tone and perspective
+        
+        Respond only with the summary. Don't include explanations.`;
+        
+    case 'makeShorter':
+      return `You are an expert editing assistant. Your task is to make the given text shorter by:
+        1. Removing redundancies and unnecessary details
+        2. Using more concise phrasing
+        3. Focusing on the most important information
+        4. Maintaining the original meaning and tone
+        
+        Respond only with the shortened version. Don't include explanations.`;
+        
+    case 'makeLonger':
+      return `You are an expert writing assistant. Your task is to expand the given text by:
+        1. Adding relevant details and context
+        2. Elaborating on key points
+        3. Including examples or explanations where appropriate
+        4. Maintaining the original style and tone
+        
+        Respond only with the expanded version. Don't include explanations.`;
+        
+    case 'fixSpelling':
+      return `You are an expert proofreader. Your task is to fix spelling and grammar in the given text by:
+        1. Correcting any spelling errors
+        2. Fixing grammatical mistakes
+        3. Improving punctuation where needed
+        4. Maintaining the original meaning and style
+        
+        Respond only with the corrected version. Don't include explanations.`;
+        
+    case 'continueWrite':
+      return `You are an expert writing assistant. Your task is to continue the given text by:
+        1. Maintaining the same style, tone, and voice
+        2. Providing a natural continuation of the current thought or topic
+        3. Adding relevant and meaningful content
+        4. Ensuring a smooth transition from the original text
+        
+        Respond only with the continuation. Don't include explanations.`;
+        
+    default:
+      return `You are an expert writing assistant. Your task is to improve the given text while maintaining its original meaning and style. Respond only with the improved version.`;
+  }
+}
 
 
