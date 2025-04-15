@@ -229,7 +229,7 @@ export function PlateEditor({
         const fontStyle = [];
         if (node.bold) fontStyle.push('bold');
         if (node.italic) fontStyle.push('italic');
-        doc.setFont(undefined, fontStyle.length ? fontStyle.join('-') : 'normal');
+        doc.setFont('Helvetica', fontStyle.length ? fontStyle.join('-') : 'normal');
 
         // Handle text color
         if (node.color) {
@@ -270,7 +270,7 @@ export function PlateEditor({
         console.log("Processing node:", node.type, node);
         
         // Reset styles for new block
-        doc.setFont(undefined, 'normal');
+        doc.setFont('Helvetica', 'normal');
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
 
