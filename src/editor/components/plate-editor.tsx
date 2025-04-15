@@ -79,7 +79,9 @@ export function PlateEditor({
     (isManualSave = true) => {
       if (onUpdate) {
         if (!isManualSave) setIsAutoSaving(true);
+        console.log('[DEBUG] Before save - editor children:', editor.children);
         const content = JSON.stringify(editor.children);
+        console.log('[DEBUG] Saving content:', content);
         Promise.resolve().then(() => {
           onUpdate(content, isManualSave);
           setLastSavedAt(new Date());
@@ -97,6 +99,35 @@ export function PlateEditor({
     setIsDirty(true);
     if (autoSave) debouncedSave();
   }, [autoSave, debouncedSave]);
+  
+  // Expose handleEditorChange globally for plugins to access
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ = handleEditorChange;
+      
+      // Also store the plate instance if possible
+      if (typeof (window as any).__PLATE_INSTANCE__ === 'undefined') {
+        setTimeout(() => {
+          try {
+            // Look for the Plate component in React fibers
+            const plateElements = document.querySelectorAll('[data-slate-plugin-plate]');
+            if (plateElements.length > 0) {
+              console.log('[PlateEditor] Found Plate element, attempting to store instance');
+            }
+          } catch (e) {
+            console.error('[PlateEditor] Error finding Plate instance:', e);
+          }
+        }, 500);
+      }
+    }
+    
+    return () => {
+      // Clean up global reference when component unmounts
+      if (typeof window !== 'undefined') {
+        delete (window as any).__PLATE_EDITOR_HANDLE_CHANGE__;
+      }
+    };
+  }, [handleEditorChange]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -120,6 +151,50 @@ export function PlateEditor({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+  
+  // Listen for external changes from plugins (like copilot)
+  useEffect(() => {
+    const handleExternalChange = () => {
+      console.log('Detected external change from plugin');
+      // Mark as dirty and trigger autosave if enabled
+      setIsDirty(true);
+      if (autoSave) debouncedSave();
+    };
+    
+    // Direct save content trigger from plugins
+    const handleSaveContent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const isManual = customEvent.detail?.manual === true;
+      console.log(`[PlateEditor] Direct save content request (manual: ${isManual})`);
+      saveContent(isManual);
+    };
+    
+    // Force save with specific content
+    const handleForceSave = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.content && onUpdate) {
+        console.log('[PlateEditor] Force save with specific content');
+        const content = JSON.stringify(customEvent.detail.content);
+        console.log('[DEBUG] Force saving content:', content);
+        onUpdate(content, false);
+        setLastSavedAt(new Date());
+        setIsDirty(false);
+      }
+    };
+    
+    // Listen for our custom events
+    document.addEventListener('plate-editor-change', handleExternalChange);
+    document.addEventListener('editor-content-changed', handleExternalChange);
+    document.addEventListener('plate-editor-save-content', handleSaveContent);
+    document.addEventListener('plate-editor-force-save', handleForceSave);
+    
+    return () => {
+      document.removeEventListener('plate-editor-change', handleExternalChange);
+      document.removeEventListener('editor-content-changed', handleExternalChange);
+      document.removeEventListener('plate-editor-save-content', handleSaveContent);
+      document.removeEventListener('plate-editor-force-save', handleForceSave);
+    };
+  }, [autoSave, debouncedSave, saveContent, onUpdate]);
 
   const organizeNotes = useCallback(async () => {
     try {

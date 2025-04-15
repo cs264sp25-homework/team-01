@@ -19,6 +19,127 @@ let runningRequest = false;
 let typingTimer: ReturnType<typeof setTimeout> | null = null;
 let editorReference: any = null;
 
+// Helper function to trigger editor change event after text insertion
+function triggerEditorChangeEvent() {
+  const editor = getEditorInstance();
+  
+  // Trigger internal slate change detection
+  if (editor) {
+    try {
+      // Log the editor's current children for debugging
+      console.log('[Copilot] Current editor children:', JSON.stringify(editor.children));
+      
+      // Force editor to detect change by triggering onChange handler
+      if (editor.onChange) {
+        console.log('[Copilot] Directly calling editor.onChange()');
+        editor.onChange();
+      }
+      
+      // Force Slate to normalize the content
+      if (editor.normalize) {
+        console.log('[Copilot] Normalizing editor content');
+        editor.normalize();
+      }
+      
+      // Try different ways to access the Plate onChange handler
+      let plateOnChangeFound = false;
+      
+      // Method 1: Try to access through _node.parent
+      if (editor._node?.parent?.props?.onChange) {
+        console.log('[Copilot] Calling Plate onChange via _node.parent');
+        editor._node.parent.props.onChange(editor.children);
+        plateOnChangeFound = true;
+      }
+      
+      // Method 2: Look for plate instance on the window
+      const plate = (window as any).__PLATE_INSTANCE__;
+      if (!plateOnChangeFound && plate?.props?.onChange) {
+        console.log('[Copilot] Calling Plate onChange via global instance');
+        plate.props.onChange(editor.children);
+        plateOnChangeFound = true;
+      }
+      
+      // Method 3: Try using the handleEditorChange from PlateEditor directly
+      if (!plateOnChangeFound && typeof (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ === 'function') {
+        console.log('[Copilot] Calling global editor change handler');
+        (window as any).__PLATE_EDITOR_HANDLE_CHANGE__(editor.children);
+        plateOnChangeFound = true;
+      }
+
+      // Check DOM for plateEditor component
+      if (!plateOnChangeFound) {
+        try {
+          // Find all keys in window that might contain the PlateEditor instance
+          Object.keys(window).forEach(key => {
+            if (key.startsWith('__reactContainer$') || key.startsWith('__reactFiber$')) {
+              try {
+                const possibleInstance = (window as any)[key];
+                if (possibleInstance && possibleInstance.stateNode && 
+                    possibleInstance.stateNode.props && 
+                    typeof possibleInstance.stateNode.props.handleEditorChange === 'function') {
+                  console.log('[Copilot] Found PlateEditor component:', key);
+                  possibleInstance.stateNode.props.handleEditorChange();
+                  plateOnChangeFound = true;
+                }
+              } catch (e) {
+                // Skip errors in fiber inspection
+              }
+            }
+          });
+        } catch (e) {
+          console.error('[Copilot] Error searching for PlateEditor in window:', e);
+        }
+      }
+      
+      // Create and dispatch custom change events
+      const event = new Event('input', { bubbles: true });
+      document.querySelector('[data-slate-editor="true"]')?.dispatchEvent(event);
+      
+      // Attempt to trigger handleEditorChange in PlateEditor component
+      // This mimics what happens when a user types directly
+      const plateEditorHandleChangeEvent = new CustomEvent('plate-editor-change', {
+        bubbles: true,
+        detail: { content: editor.children }
+      });
+      document.dispatchEvent(plateEditorHandleChangeEvent);
+      
+      // Also dispatch direct content change event
+      const contentChangeEvent = new CustomEvent('editor-content-changed', {
+        bubbles: true,
+        detail: { editor, children: editor.children }
+      });
+      document.dispatchEvent(contentChangeEvent);
+      
+      // Also try to trigger the normal onChange listeners
+      const changeEvent = new Event('change', { bubbles: true });
+      document.querySelector('[data-slate-editor="true"]')?.dispatchEvent(changeEvent);
+      
+      // If we can find the Plate component, trigger its onChange directly
+      try {
+        const plateElement = document.querySelector('[data-slate-editor]')?.closest('[data-slate-plugin-plate]');
+        if (plateElement) {
+          const plateEvent = new CustomEvent('plate-change', { 
+            bubbles: true,
+            detail: { editor, children: editor.children }
+          });
+          plateElement.dispatchEvent(plateEvent);
+        }
+      } catch (e) {
+        console.error('[Copilot] Error triggering Plate onChange:', e);
+      }
+      
+      console.log('[Copilot] Triggered editor change event');
+      return true;
+    } catch (e) {
+      console.error('[Copilot] Error triggering change event:', e);
+    }
+  } else {
+    console.error('[Copilot] No editor instance found for change event');
+  }
+  
+  return false;
+}
+
 // Expose variables globally for ghost-text.tsx
 if (typeof window !== 'undefined') {
   (window as any).ghostTextIsActive = false;
@@ -97,6 +218,34 @@ function getEditorInstance() {
 // Direct text insertion function that doesn't require editor instance
 function directInsertText(text: string) {
   console.log('[Copilot] Attempting direct text insertion:', text);
+  
+  // Try to get the editor instance first
+  const editor = getEditorInstance();
+  if (editor) {
+    try {
+      // Debug editor state before change
+      console.log('[DEBUG] Editor children BEFORE insert:', JSON.stringify(editor.children));
+      
+      // Use the Slate API directly - this is the most reliable method
+      // as it updates the internal data model, not just the DOM
+      if (typeof editor.insertText === 'function') {
+        editor.insertText(text);
+        console.log('[Copilot] Inserted text via editor.insertText - proper Slate update');
+        
+        // Debug editor state after change
+        console.log('[DEBUG] Editor children AFTER insert:', JSON.stringify(editor.children));
+        
+        // Make sure the onChange handlers are triggered
+        triggerEditorChangeEvent();
+        return true;
+      }
+    } catch (slateError) {
+      console.error('[Copilot] Slate insertion failed:', slateError);
+      // Continue to DOM fallback methods
+    }
+  }
+  
+  // Fallback to DOM methods if Slate API fails
   try {
     // Get the current selection
     const selection = window.getSelection();
@@ -135,9 +284,32 @@ function directInsertText(text: string) {
         bubbles: true
       });
       editorElement.dispatchEvent(changeEvent);
+      
+      // Try to synchronize the DOM changes back to the Slate model
+      if (editor) {
+        try {
+          // Force Slate to re-read from DOM - this is experimental
+          // and may not work in all Slate versions
+          if (editor.onChange) {
+            editor.onChange();
+          }
+          // Try using Slate's built-in normalization
+          if (editor.normalize) {
+            editor.normalize();
+          }
+        } catch (e) {
+          console.error('[Copilot] Error synchronizing DOM to Slate:', e);
+        }
+      }
+      
+      // Make sure editor change is detected for saving
+      setTimeout(() => {
+        // Add additional change detection triggers
+        triggerEditorChangeEvent();
+      }, 10);
     }
     
-    console.log('[Copilot] Direct text insertion succeeded');
+    console.log('[Copilot] Direct text insertion succeeded via DOM');
     return true;
   } catch (e) {
     console.error('[Copilot] Direct text insertion failed:', e);
@@ -303,14 +475,77 @@ export const createCopilotPlugin = () => {
           return false;
         }
         
+        // Store original editor content for comparison
+        const originalContent = editor ? JSON.parse(JSON.stringify(editor.children)) : null;
+        
         // Force executing our handler
         setTimeout(() => {
-          // Try direct DOM insertion first (most reliable)
-          console.log('[Copilot] Attempting text insertion with text:', textToInsert);
+          let insertSuccessful = false;
           
-          const insertSuccess = directInsertText(textToInsert);
+          // Try to use editor methods first (more reliable for Slate model update)
+          if (editor) {
+            try {
+              console.log('[DEBUG] Tab key - Editor children BEFORE insert:', JSON.stringify(editor.children));
+              
+              if (typeof editor.insertText === 'function') {
+                editor.insertText(textToInsert);
+                console.log('[Copilot] Inserted text via editor.insertText');
+                insertSuccessful = true;
+              } else if (editor.api?.insertText) {
+                editor.api.insertText(textToInsert);
+                console.log('[Copilot] Inserted text via editor.api.insertText');
+                insertSuccessful = true;
+              } else if (editor.insertFragment) {
+                const fragment = [{ text: textToInsert }];
+                editor.insertFragment(fragment);
+                console.log('[Copilot] Inserted text via editor.insertFragment');
+                insertSuccessful = true;
+              }
+              
+              console.log('[DEBUG] Tab key - Editor children AFTER insert:', JSON.stringify(editor.children));
+              
+              // Compare content to see if it actually changed
+              if (originalContent) {
+                const contentChanged = compareEditorContent(originalContent, editor.children);
+                console.log('[DEBUG] Content actually changed:', contentChanged);
+                
+                // If content didn't change in the model, try harder to update it
+                if (!contentChanged) {
+                  console.log('[DEBUG] Content unchanged in model - trying manual update');
+                  // Try to directly modify the editor children by finding the current node
+                  try {
+                    if (editor.selection?.anchor?.path) {
+                      const path = editor.selection.anchor.path;
+                      const blockIndex = path[0];
+                      if (editor.children[blockIndex]) {
+                        const block = editor.children[blockIndex];
+                        if (block.children && block.children.length > 0) {
+                          // Get existing text and append the suggestion
+                          const textNode = block.children[0];
+                          const currentText = textNode.text || '';
+                          textNode.text = currentText + textToInsert;
+                          console.log('[DEBUG] Manually updated text node:', textNode);
+                        }
+                      }
+                    }
+                  } catch (manualUpdateError) {
+                    console.error('[DEBUG] Error in manual update:', manualUpdateError);
+                  }
+                }
+              }
+            } catch (editorError) {
+              console.error('[Copilot] Editor insertion failed:', editorError);
+              // Fall back to DOM methods
+            }
+          }
           
-          if (insertSuccess) {
+          // Fallback to DOM methods if editor methods failed
+          if (!insertSuccessful) {
+            console.log('[Copilot] Attempting direct DOM insertion with text:', textToInsert);
+            insertSuccessful = directInsertText(textToInsert);
+          }
+          
+          if (insertSuccessful) {
             // Clear the suggestion state
             isActive = false;
             currentText = '';
@@ -321,34 +556,26 @@ export const createCopilotPlugin = () => {
             (window as any).ghostTextCurrentText = '';
             (window as any).ghostTextSuggestions = {};
             
-            return;
-          }
-          
-          // Fall back to editor API methods
-          if (editor) {
-            try {
-              if (typeof editor.insertText === 'function') {
-                editor.insertText(textToInsert);
-                console.log('[Copilot] Inserted text via editor.insertText');
-              } else if (editor.api?.insertText) {
-                editor.api.insertText(textToInsert);
-                console.log('[Copilot] Inserted text via editor.api.insertText');
-              } else {
-                console.error('[Copilot] No method to insert text found on editor');
-              }
-              
-              // Clear the suggestion state
-              isActive = false;
-              currentText = '';
-              blockSuggestions = {};
-              
-              // Update global variables
-              (window as any).ghostTextIsActive = false;
-              (window as any).ghostTextCurrentText = '';
-              (window as any).ghostTextSuggestions = {};
-            } catch (err) {
-              console.error('[Copilot] Editor insertion failed:', err);
+            // Trigger all possible change events to ensure saving
+            triggerEditorChangeEvent();
+            
+            // Explicitly trigger a save
+            if (typeof (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ === 'function') {
+              console.log('[Copilot] Manually triggering handle change function');
+              (window as any).__PLATE_EDITOR_HANDLE_CHANGE__();
             }
+            
+            // FORCE a direct save with current editor content
+            forceEditorContentSave();
+            
+            // Request a normal save too
+            const saveContentEvent = new CustomEvent('plate-editor-save-content', {
+              bubbles: true,
+              detail: { manual: false }
+            });
+            document.dispatchEvent(saveContentEvent);
+          } else {
+            console.error('[Copilot] Failed to insert text via any method');
           }
         }, 0);
         
@@ -542,20 +769,28 @@ if (typeof window !== 'undefined') {
         // Insert the text - try multiple methods to ensure it works
         if (textToInsert) {
           try {
-            console.log('Accepting suggestion via global method:', textToInsert);
+            console.log('[Copilot] Accepting suggestion via global method:', textToInsert);
             
-            // Method 1: Use insertText directly
+            let insertSuccessful = false;
+            
+            // Method 1: Use insertText directly - PREFERRED for updating Slate model
             if (typeof editor.insertText === 'function') {
               editor.insertText(textToInsert);
+              console.log('[Copilot] Inserted text via editor.insertText');
+              insertSuccessful = true;
             } 
             // Method 2: Use the editor API if available
             else if (editor.api?.insertText) {
               editor.api.insertText(textToInsert);
+              console.log('[Copilot] Inserted text via editor.api.insertText');
+              insertSuccessful = true;
             }
             // Method 3: Use the Slate API
             else if (editor.insertFragment) {
               const fragment = [{ text: textToInsert }];
               editor.insertFragment(fragment);
+              console.log('[Copilot] Inserted text via editor.insertFragment');
+              insertSuccessful = true;
             }
             // Method 4: Manual DOM insertion as fallback
             else if (window.getSelection) {
@@ -564,13 +799,41 @@ if (typeof window !== 'undefined') {
                 const range = selection.getRangeAt(0);
                 range.deleteContents();
                 range.insertNode(document.createTextNode(textToInsert));
+                console.log('[Copilot] Inserted text via DOM manipulation');
+                
+                // Extra step: Try to normalize editor after DOM change
+                if (editor.normalize) {
+                  setTimeout(() => {
+                    editor.normalize();
+                  }, 0);
+                }
+                
+                insertSuccessful = true;
               }
+            }
+            
+            if (!insertSuccessful) {
+              console.error('[Copilot] Could not find a method to insert text');
+              return false;
             }
             
             // Force editor to update
             setTimeout(() => {
-              const event = new Event('input', { bubbles: true });
-              document.querySelector('[data-slate-editor="true"]')?.dispatchEvent(event);
+              // Trigger all possible change events
+              triggerEditorChangeEvent();
+              
+              // Explicitly call the debounced save if we can find it
+              if (typeof (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ === 'function') {
+                console.log('[Copilot] Manually triggering handle change function');
+                (window as any).__PLATE_EDITOR_HANDLE_CHANGE__();
+              }
+              
+              // Get PlateEditor to mark content as dirty
+              const saveContentEvent = new CustomEvent('plate-editor-save-content', {
+                bubbles: true,
+                detail: { manual: false }
+              });
+              document.dispatchEvent(saveContentEvent);
             }, 0);
             
             // Reset state
@@ -578,9 +841,14 @@ if (typeof window !== 'undefined') {
             currentText = '';
             blockSuggestions = {};
             
+            // Update global variables
+            (window as any).ghostTextIsActive = false;
+            (window as any).ghostTextCurrentText = '';
+            (window as any).ghostTextSuggestions = {};
+            
             return true;
           } catch (error) {
-            console.error('Error accepting suggestion:', error);
+            console.error('[Copilot] Error accepting suggestion:', error);
           }
         }
       }
@@ -695,6 +963,37 @@ if (typeof window !== 'undefined') {
       (window as any).injectGhostText(' - this is a directly injected ghost text example');
     }
   });
+}
+
+// Helper function to force save editor content directly
+function forceEditorContentSave() {
+  const editor = getEditorInstance();
+  if (editor) {
+    console.log('[DEBUG] Force saving editor content:', JSON.stringify(editor.children));
+    
+    // Create and dispatch a custom save event
+    const saveEvent = new CustomEvent('plate-editor-force-save', {
+      bubbles: true,
+      detail: { content: editor.children }
+    });
+    document.dispatchEvent(saveEvent);
+    
+    return true;
+  }
+  return false;
+}
+
+// Helper function to compare editor content before/after
+function compareEditorContent(before: any, after: any) {
+  const beforeStr = JSON.stringify(before);
+  const afterStr = JSON.stringify(after);
+  
+  console.log('[DEBUG] Content comparison:');
+  console.log('- Before:', beforeStr);
+  console.log('- After:', afterStr);
+  console.log('- Different?', beforeStr !== afterStr);
+  
+  return beforeStr !== afterStr;
 }
 
 export default copilotPlugins;
