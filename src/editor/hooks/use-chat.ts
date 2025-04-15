@@ -1,7 +1,5 @@
-'use client';
-
 import { useAction } from 'convex/react';
-import { useChat as useBaseChat } from 'ai/react';
+import { useChat as useBaseChat } from '@ai-sdk/react'
 import { api } from '../../../convex/_generated/api';
 import { useEditorRef } from '@udecode/plate/react';
 
@@ -10,10 +8,8 @@ export const useChat = () => {
   const processAICommand = useAction(api.openai.processAICommand);
   const editor = useEditorRef();
   
-  //todo figure out how to do this without useBaseChat cus deprecated
   return useBaseChat({
     id: 'editor',
-    api: '/api/ai/command',
     body: {},
     fetch: async (input, init) => {
       try {
@@ -21,27 +17,100 @@ export const useChat = () => {
         const body = init?.body ? JSON.parse(init.body.toString()) : {};
         const { prompt, messages } = body;
         
+        console.log("prompt", prompt);
+        console.log("messages", messages);
+        
         // Determine the command type from the last message
         const lastMessage = messages?.[messages.length - 1]?.content || prompt || '';
         const commandType = determineCommandType(lastMessage);
         
-        // Get editor content if available
+        // Get only the selected block content instead of the entire editor content
         let editorContent = '';
+        let selectedContent = '';
         
-        if (editor && editor.children) {
-          // Get the current editor content
-          editorContent = JSON.stringify(editor.children);
+        if (editor) {
+          try {
+            // Get the full editor content for reference
+            editorContent = JSON.stringify(editor.children);
+            
+            // Check if there's a selection
+            if (editor.selection) {
+              // Get the selected blocks
+              const selectedBlocks = editor.api.blocks();
+              
+              if (selectedBlocks.length > 0) {
+                // Get only the selected blocks
+                const selectedNodes = selectedBlocks.map(([node]) => node);
+                
+                // Create a subset of the editor content with just the selected blocks
+                selectedContent = JSON.stringify(selectedNodes);
+                console.log("Selected content:", selectedContent);
+              } else {
+                // If no blocks are explicitly selected, get the current block
+                const currentBlock = editor.api.block({ highest: true });
+                
+                if (currentBlock) {
+                  // Use only the current block
+                  selectedContent = JSON.stringify([currentBlock[0]]);
+                  console.log("Current block:", selectedContent);
+                }
+              }
+            } else {
+              // If no selection, try to get the current block
+              const currentBlock = editor.api.block({ highest: true });
+              
+              if (currentBlock) {
+                // Use only the current block
+                selectedContent = JSON.stringify([currentBlock[0]]);
+                console.log("Current block (no selection):", selectedContent);
+              }
+            }
+          } catch (error) {
+            console.error("Error getting selected content:", error);
+            // Fall back to using the entire editor content
+            selectedContent = editorContent;
+          }
         }
+ 
+        console.log("editorContent", editorContent);
+        console.log("selectedContent to send:", selectedContent || editorContent);
+        
+        console.log("Calling AI command:", commandType);
         
         // Call the Convex action with the prompt and command type
+        // Use the selected content if available, otherwise fall back to the full editor content
         const result = await processAICommand({
           prompt: lastMessage,
           commandType,
-          editorContent: editorContent || undefined
+          editorContent: selectedContent || editorContent
         });
         
-        // Convert the response to a readable stream in the format expected by the AI SDK
-        return createResponseFromText(result.text);
+        console.log("Received result from AI command:", result);
+        
+        // The AI SDK expects a specific format for the response
+        const encoder = new TextEncoder();
+        
+        return new Response(
+          new ReadableStream({
+            async start(controller) {
+              // Send the full text as a single chunk with the expected format
+              controller.enqueue(encoder.encode(`0:${JSON.stringify(result.text)}\n`));
+              
+              // Add the finish event with metadata in the expected format
+              controller.enqueue(
+                encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":${result.text.length}}}\n`)
+              );
+              
+              controller.close();
+            },
+          }),
+          {
+            headers: {
+              'Content-Type': 'text/plain',
+              'Connection': 'keep-alive',
+            },
+          }
+        );
       } catch (error) {
         console.error("Error calling AI command:", error);
         return new Response(JSON.stringify({ error: "Failed to process AI command" }), {
@@ -68,31 +137,4 @@ function determineCommandType(prompt: string): string {
   
   // Default to generic improvement
   return 'improveWriting';
-}
-
-// Helper to create a readable stream from text, formatted for the AI SDK
-function createResponseFromText(text: string) {
-  const encoder = new TextEncoder();
-  
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        // Stream the text with the correct format
-        controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`));
-        
-        // Add the finish event
-        controller.enqueue(
-          encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":${text.length}}}\n`)
-        );
-        
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'text/plain',
-        'Connection': 'keep-alive',
-      },
-    }
-  );
 }
