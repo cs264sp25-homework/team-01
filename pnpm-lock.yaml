@@ -263,6 +263,9 @@ importers:
       openai:
         specifier: ^4.90.0
         version: 4.90.0(zod@3.24.2)
+      openai-edge:
+        specifier: ^1.2.2
+        version: 1.2.2
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -3529,6 +3532,10 @@ packages:
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
+
+  openai-edge@1.2.2:
+    resolution: {integrity: sha512-C3/Ao9Hkx5uBPv9YFBpX/x59XMPgPUU4dyGg/0J2sOJ7O9D98kD+lfdOc7v/60oYo5xzMGct80uFkYLH+X2qgw==}
+    engines: {node: '>=18'}
 
   openai@4.90.0:
     resolution: {integrity: sha512-YCuHMMycqtCg1B8G9ezkOF0j8UnBWD3Al/zYaelpuXwU1yhCEv+Y4n9G20MnyGy6cH4GsFwOMrgstQ+bgG1PtA==}
@@ -7530,6 +7537,8 @@ snapshots:
   oauth4webapi@3.3.2: {}
 
   object-assign@4.1.1: {}
+
+  openai-edge@1.2.2: {}
 
   openai@4.90.0(zod@3.24.2):
     dependencies:
