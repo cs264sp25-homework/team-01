@@ -5,6 +5,7 @@ import { api } from "./_generated/api";
 import { ConvexError } from "convex/values";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import { OpenAI } from "openai";
 
 // Query to fetch chat history
 export const getChatHistory = query({
@@ -116,6 +117,7 @@ export const streamingChatResponse = action({
     noteId: v.string(),
     contextMessageCount: v.optional(v.number()),
     noteTitle: v.optional(v.string()),
+    useEmbeddings: v.optional(v.boolean()),
     noteContent: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ messageId: Id<"messages">; content: string }> => {
@@ -162,51 +164,56 @@ export const streamingChatResponse = action({
         content: msg.content,
       }));
       
-      // Create a system prompt that includes the note title and content
+      // Create a system prompt that includes the note title and relevant content
       let systemPrompt = "You are a helpful AI assistant that helps users with their documents.";
       
-      // Add note context if provided
-      if (args.noteTitle || args.noteContent) {
-        systemPrompt += "\n\nCurrent document context:";
-        
-        if (args.noteTitle) {
-          systemPrompt += `\nTitle: ${args.noteTitle}`;
-        }
-        
-        if (args.noteContent) {
-          // Parse the note content if it's in JSON format
-          try {
-            const parsedContent = JSON.parse(args.noteContent);
-            // Create a plain text representation of the content
-            let plainTextContent = "";
-            const extractTextFromNodes = (nodes: any[]) => {
-              for (const node of nodes) {
-                if (node.text) {
-                  plainTextContent += node.text + " ";
-                }
-                if (node.children && Array.isArray(node.children)) {
-                  extractTextFromNodes(node.children);
-                }
-              }
-            };
+      // Get relevant context chunks using embeddings if enabled
+      if (args.useEmbeddings !== false) {
+        try {
+          // Get relevant chunks using embeddings search
+          const relevantChunks = await ctx.runAction(api.embeddings.searchSimilarContent, {
+            query: args.message,
+            limit: 5 // Get top 5 most relevant chunks
+          });
+          
+          if (relevantChunks && relevantChunks.length > 0) {
+            systemPrompt += "\n\nHere are relevant sections from the document that may help answer the question:";
             
-            extractTextFromNodes(parsedContent);
-            systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
-          } catch {
-            // If parsing fails, use content as is with a length limit
-            systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
+            relevantChunks.forEach((chunk, index) => {
+              systemPrompt += `\n\nSection ${index + 1} (Relevance: ${Math.round(chunk.similarity * 100)}%):\n${chunk.content}`;
+            });
+            
+            console.log(`Found ${relevantChunks.length} relevant chunks for the query`);
+          } else {
+            console.log("No relevant chunks found for the query");
           }
+        } catch (error) {
+          console.error("Error retrieving relevant chunks:", error);
+          // Continue without embeddings if there's an error
         }
-        
-        systemPrompt += "\n\nPlease refer to this document content when answering questions about it.";
       }
+      
+      // Add note title if provided
+      if (args.noteTitle) {
+        systemPrompt += `\n\nDocument Title: ${args.noteTitle}`;
+      }
+      
+      // Add note content as a fallback if embeddings are not available or didn't find anything
+      // and if the noteContent is provided
+      if (args.noteContent && (!args.useEmbeddings || !systemPrompt.includes("relevant sections"))) {
+        systemPrompt += `\n\nDocument Content: ${args.noteContent.substring(0, 8000)}`; // Limit content to avoid token limits
+      }
+      
+      systemPrompt += "\n\nPlease provide a helpful, accurate response based on the document content provided.";
       
       // Use the systemPrompt parameter instead of a system message
       const result = streamText({
         model: openai("gpt-4o"),
-        messages: formattedMessages,
-        temperature: 0.7,
-        system: systemPrompt
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...formattedMessages
+        ],
+        temperature: 0.7
       });
       
       let fullResponse = "";
@@ -268,6 +275,7 @@ export const regenerateStreamingResponse = action({
     noteId: v.string(),
     contextMessageCount: v.optional(v.number()),
     noteTitle: v.optional(v.string()),
+    useEmbeddings: v.optional(v.boolean()),
     noteContent: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -326,51 +334,56 @@ export const regenerateStreamingResponse = action({
         content: msg.content,
       }));
       
-      // Create a system prompt that includes the note title and content
+      // Create a system prompt that includes the note title and relevant content
       let systemPrompt = "You are a helpful AI assistant that helps users with their documents.";
       
-      // Add note context if provided
-      if (args.noteTitle || args.noteContent) {
-        systemPrompt += "\n\nCurrent document context:";
-        
-        if (args.noteTitle) {
-          systemPrompt += `\nTitle: ${args.noteTitle}`;
-        }
-        
-        if (args.noteContent) {
-          // Parse the note content if it's in JSON format
-          try {
-            const parsedContent = JSON.parse(args.noteContent);
-            // Create a plain text representation of the content
-            let plainTextContent = "";
-            const extractTextFromNodes = (nodes: any[]) => {
-              for (const node of nodes) {
-                if (node.text) {
-                  plainTextContent += node.text + " ";
-                }
-                if (node.children && Array.isArray(node.children)) {
-                  extractTextFromNodes(node.children);
-                }
-              }
-            };
+      // Get relevant context chunks using embeddings if enabled
+      if (args.useEmbeddings !== false) {
+        try {
+          // Get relevant chunks using embeddings search
+          const relevantChunks = await ctx.runAction(api.embeddings.searchSimilarContent, {
+            query: userMessage.content, // Use the user message as the query
+            limit: 5 // Get top 5 most relevant chunks
+          });
+          
+          if (relevantChunks && relevantChunks.length > 0) {
+            systemPrompt += "\n\nHere are relevant sections from the document that may help answer the question:";
             
-            extractTextFromNodes(parsedContent);
-            systemPrompt += `\nContent: ${plainTextContent.substring(0, 1500)}`; // Limit content length
-          } catch {
-            // If parsing fails, use content as is with a length limit
-            systemPrompt += `\nContent: ${args.noteContent.substring(0, 1500)}`;
+            relevantChunks.forEach((chunk, index) => {
+              systemPrompt += `\n\nSection ${index + 1} (Relevance: ${Math.round(chunk.similarity * 100)}%):\n${chunk.content}`;
+            });
+            
+            console.log(`Found ${relevantChunks.length} relevant chunks for the query`);
+          } else {
+            console.log("No relevant chunks found for the query");
           }
+        } catch (error) {
+          console.error("Error retrieving relevant chunks:", error);
+          // Continue without embeddings if there's an error
         }
-        
-        systemPrompt += "\n\nPlease refer to this document content when answering questions about it.";
       }
+      
+      // Add note title if provided
+      if (args.noteTitle) {
+        systemPrompt += `\n\nDocument Title: ${args.noteTitle}`;
+      }
+      
+      // Add note content as a fallback if embeddings are not available or didn't find anything
+      // and if the noteContent is provided
+      if (args.noteContent && (!args.useEmbeddings || !systemPrompt.includes("relevant sections"))) {
+        systemPrompt += `\n\nDocument Content: ${args.noteContent.substring(0, 8000)}`; // Limit content to avoid token limits
+      }
+      
+      systemPrompt += "\n\nPlease provide a helpful, accurate response based on the document content provided.";
       
       // Use the systemPrompt parameter instead of a system message
       const result = streamText({
         model: openai("gpt-4o"),
-        messages: formattedMessages,
-        temperature: 0.7,
-        system: systemPrompt
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...formattedMessages
+        ],
+        temperature: 0.7
       });
       
       let fullResponse = "";
@@ -491,5 +504,98 @@ export const clearChatHistory = mutation({
     }
     
     return { deletedCount: messagesToDelete.length };
+  },
+});
+
+// Action to handle chat with context from embeddings
+export const chatWithContext = action({
+  args: {
+    noteId: v.string(),
+    message: v.string(),
+    previousMessages: v.array(
+      v.object({
+        _id: v.id("messages"),
+        content: v.string(),
+        sender: v.union(v.literal("user"), v.literal("ai")),
+        userId: v.string(),
+        noteId: v.string(),
+        timestamp: v.number(),
+        isComplete: v.optional(v.boolean()),
+      })
+    ),
+  },
+  handler: async (ctx, args): Promise<{
+    response: string;
+    context: Array<{ content: string; similarity: number }>;
+  }> => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new ConvexError({
+        code: 500,
+        message: "OpenAI API key not configured"
+      });
+    }
+
+    try {
+      // Get relevant chunks using embeddings search
+      const searchResults = await ctx.runAction(api.embeddings.searchSimilarContent, {
+        query: args.message,
+        limit: 5
+      });
+
+      // Format context from retrieved chunks
+      const context = searchResults.map(result => ({
+        content: result.content,
+        similarity: result.similarity
+      }));
+
+      // Create a system prompt with the retrieved context
+      let systemPrompt = "You are a helpful AI assistant. Answer questions based on the relevant context provided:";
+      
+      searchResults.forEach((chunk, index) => {
+        systemPrompt += `\n\nRELEVANT CONTEXT ${index + 1} (Relevance: ${Math.round(chunk.similarity * 100)}%):\n${chunk.content}`;
+      });
+      
+      systemPrompt += "\n\nWhen answering, use the provided context information. If the context doesn't contain relevant information, say so rather than making up an answer.";
+
+      // Format previous conversation messages
+      const messages = args.previousMessages.map(msg => ({
+        role: msg.sender === "user" ? "user" as const : "assistant" as const,
+        content: msg.content,
+      }));
+      
+      // Add the current message
+      messages.push({
+        role: "user" as const,
+        content: args.message,
+      });
+
+      // Call OpenAI
+      const openai = new OpenAI({ apiKey });
+      
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      });
+
+      // Extract the response
+      const response = completion.choices[0]?.message?.content || "";
+
+      return {
+        response,
+        context
+      };
+    } catch (error) {
+      console.error("Error in chat with context:", error);
+      throw new ConvexError({
+        code: 500,
+        message: "Failed to generate chat response",
+      });
+    }
   },
 }); 

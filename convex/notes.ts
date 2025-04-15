@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 // Get all notes for the authenticated user
 export const list = query({
@@ -73,7 +75,16 @@ export const create = mutation({
       updatedAt: now,
     });
     
-
+    // Process the note to create chunks
+    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
+      noteId,
+      content: args.content,
+    });
+    
+    // Process the note to create embeddings
+    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
+      noteId,
+    });
     
     return noteId;
   },
@@ -110,6 +121,17 @@ export const update = mutation({
       title: args.title,
       content: args.content,
       updatedAt: now,
+    });
+    
+    // Process updated note to create/update chunks
+    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
+      noteId: args.id,
+      content: args.content,
+    });
+    
+    // Process the note to create embeddings
+    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
+      noteId: args.id,
     });
     
     return args.id;

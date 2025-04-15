@@ -42,6 +42,19 @@ const schema = defineSchema({
   }).index("by_user", ["userId"])
     .index("by_note", ["noteId"])
     .index("by_user_and_note", ["userId", "noteId"]),
+  chunks: defineTable({
+    noteId: v.id("notes"),
+    content: v.string(),
+    index: v.number(),
+  }).index("by_noteId", ["noteId"]),
+  embeddings: defineTable({
+    chunkId: v.id("chunks"),
+    noteId: v.id("notes"),
+    vector: v.array(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_chunkId", ["chunkId"])
+    .index("by_noteId", ["noteId"]),
   // New table for tests
   tests: defineTable({
     title: v.optional(v.string()),
