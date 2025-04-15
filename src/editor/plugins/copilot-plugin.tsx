@@ -15,7 +15,6 @@ let currentText = '';
 let blockSuggestions: Record<string, string> = {};
 let lastGenerationTime = 0;
 let runningRequest = false;
-let typingTimer: ReturnType<typeof setTimeout> | null = null;
 let editorReference: any = null;
 
 // Helper function to trigger editor change event after text insertion
@@ -414,7 +413,9 @@ function startEditorChecks() {
     if (editor) {
       editorReference = editor;
       
-      // Generate an initial suggestion
+      // We no longer generate an initial suggestion automatically
+      // The following code is commented out to prevent automatic suggestion generation
+      /*
       try {
         if (editor.api?.block) {
           const block = editor.api.block({ highest: true });
@@ -428,6 +429,7 @@ function startEditorChecks() {
       } catch (e) {
         // Error during initial suggestion
       }
+      */
     } else {
       checkAttempts++;
       if (checkAttempts < 30) {  // Try for 30 seconds max
@@ -555,6 +557,46 @@ export const createCopilotPlugin = () => {
             (window as any).ghostTextCurrentText = '';
             (window as any).ghostTextSuggestions = {};
             
+            // Immediately remove any ghost text elements from the DOM
+            try {
+              // Remove any direct ghost text elements
+              document.querySelectorAll('.direct-ghost-text').forEach(el => el.remove());
+              
+              // Remove React-rendered ghost text elements
+              document.querySelectorAll('.ghost-text-content').forEach(el => el.remove());
+            } catch (e) {
+              console.error('[Copilot] Error removing ghost text elements:', e);
+            }
+            
+            // Force refresh UI to clear ghost text
+            const editor = getEditorInstance();
+            if (editor) {
+              try {
+                // First approach: Force slate to update UI
+                if (editor.selection) {
+                  const oldSelection = { ...editor.selection };
+                  editor.selection = null;
+                  setTimeout(() => {
+                    editor.selection = oldSelection;
+                    
+                    // Second approach: Force component rerender
+                    if (editor._node?.parent?.forceUpdate) {
+                      editor._node.parent.forceUpdate();
+                    }
+                  }, 0);
+                }
+                
+                // Third approach: Dispatch custom event for UI refresh
+                const refreshEvent = new CustomEvent('plate-ghost-text-clear', {
+                  bubbles: true,
+                  detail: { blockIds: Object.keys(blockSuggestions) }
+                });
+                document.dispatchEvent(refreshEvent);
+              } catch (e) {
+                console.error('[Copilot] Error refreshing UI:', e);
+              }
+            }
+            
             // Trigger all possible change events to ensure saving
             triggerEditorChangeEvent();
             
@@ -584,7 +626,43 @@ export const createCopilotPlugin = () => {
     
     // Add keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      // Ctrl+G to manually trigger suggestion
+      // Control + Space to trigger suggestion (replacing Ctrl+G)
+      if (e.ctrlKey && e.key === ' ') {
+        e.preventDefault();
+        
+        const editor = getEditorInstance();
+        if (editor && editor.api?.block) {
+          try {
+            // Get current block content
+            const block = editor.api.block({ highest: true });
+            if (block && block[0]) {
+              const content = serializeMdNodes([block[0]]);
+              generateSuggestion(content);
+            }
+          } catch (e) {
+            // Error getting block content
+          }
+        } else {
+          // Try to find editor element at least
+          const editorEl = document.querySelector('[data-slate-editor="true"]');
+          if (editorEl) {
+            // Try to extract text from the first paragraph for testing
+            try {
+              const firstParagraph = editorEl.querySelector('p');
+              if (firstParagraph) {
+                const text = firstParagraph.textContent || '';
+                if (text.length > 5) {
+                  generateSuggestion(text);
+                }
+              }
+            } catch (e) {
+              // Error extracting text from editor element
+            }
+          }
+        }
+      }
+      
+      // Keep existing Ctrl+G functionality for backward compatibility
       if (e.ctrlKey && e.key === 'g') {
         e.preventDefault();
         
@@ -646,7 +724,7 @@ export const createCopilotPlugin = () => {
       }
     });
     
-    // Watch for typing
+    // Watch for typing but don't automatically generate suggestions
     document.addEventListener('input', (e) => {
       // Only process if the target is in the editor
       if (!(e.target instanceof Element) || !e.target.closest('[data-slate-editor]')) {
@@ -666,7 +744,9 @@ export const createCopilotPlugin = () => {
         blockSuggestions = {};
       }
       
-      // Schedule new suggestion after typing pause
+      // We no longer schedule new suggestions after typing pause
+      // The following code is commented out to prevent automatic suggestion generation
+      /*
       clearTimeout(typingTimer!);
       typingTimer = setTimeout(() => {
         const currentEditor = getEditorInstance();
@@ -691,6 +771,7 @@ export const createCopilotPlugin = () => {
           }
         }
       }, 1000); // Wait 1 second after typing stops
+      */
     });
     
     // Initial test of OpenAI API
@@ -818,6 +899,9 @@ if (typeof window !== 'undefined') {
             
             // Force editor to update
             setTimeout(() => {
+              // Thoroughly clear all ghost text
+              clearAllGhostText();
+              
               // Trigger all possible change events
               triggerEditorChangeEvent();
               
@@ -834,16 +918,6 @@ if (typeof window !== 'undefined') {
               });
               document.dispatchEvent(saveContentEvent);
             }, 0);
-            
-            // Reset state
-            isActive = false;
-            currentText = '';
-            blockSuggestions = {};
-            
-            // Update global variables
-            (window as any).ghostTextIsActive = false;
-            (window as any).ghostTextCurrentText = '';
-            (window as any).ghostTextSuggestions = {};
             
             return true;
           } catch (error) {
@@ -993,6 +1067,56 @@ function compareEditorContent(before: any, after: any) {
   console.log('- Different?', beforeStr !== afterStr);
   
   return beforeStr !== afterStr;
+}
+
+// Add an explicit function to clear all ghost text and expose it globally
+function clearAllGhostText() {
+  // Reset state variables
+  isActive = false;
+  currentText = '';
+  blockSuggestions = {};
+  
+  // Update global variables
+  if (typeof window !== 'undefined') {
+    (window as any).ghostTextIsActive = false;
+    (window as any).ghostTextCurrentText = '';
+    (window as any).ghostTextSuggestions = {};
+  }
+  
+  // Remove any ghost text elements from the DOM
+  try {
+    // Remove direct ghost text elements
+    document.querySelectorAll('.direct-ghost-text').forEach(el => el.remove());
+    
+    // Remove React-rendered ghost text elements
+    document.querySelectorAll('.ghost-text-content').forEach(el => el.remove());
+  } catch (e) {
+    console.error('[Copilot] Error removing ghost text elements:', e);
+  }
+  
+  // Force editor refresh
+  const editor = getEditorInstance();
+  if (editor && editor.selection) {
+    try {
+      const oldSelection = { ...editor.selection };
+      editor.selection = null;
+      setTimeout(() => {
+        editor.selection = oldSelection;
+      }, 0);
+    } catch (e) {
+      // Ignore errors during refresh
+    }
+  }
+  
+  return true;
+}
+
+// Expose clear function globally
+if (typeof window !== 'undefined') {
+  (window as any).clearAllGhostText = clearAllGhostText;
+  
+  // Override resetGhostText to ensure thorough clearing
+  (window as any).resetGhostText = clearAllGhostText;
 }
 
 export default copilotPlugins;
