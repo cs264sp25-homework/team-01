@@ -1,14 +1,12 @@
 "use client";
 
-import type { TElement, PlateEditor } from "@udecode/plate";
+
 // Import our custom copilot plugin instead of the built-in one
 import { copilotPlugins } from "./copilot-plugin";
-import { serializeMdNodes, stripMarkdown } from "@udecode/plate-markdown";
 
 import { ConvexReactClient } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-import { GhostText } from "@/plate-ui/ghost-text";
 
 // Initialize Convex client
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL || "");

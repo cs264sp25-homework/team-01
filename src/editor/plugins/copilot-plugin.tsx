@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { createPlatePlugin } from '@udecode/plate/react';
 import { serializeMdNodes, stripMarkdown } from "@udecode/plate-markdown";
 import { ConvexReactClient } from "convex/react";
@@ -697,9 +696,9 @@ export const createCopilotPlugin = () => {
     // Initial test of OpenAI API
     setTimeout(async () => {
       try {
-        const result = await convex.action(api.openai.completeText, {
-          prompt: 'This is a test to verify OpenAI integration is working.'
-        });
+        // const result = await convex.action(api.openai.completeText, {
+        //   prompt: 'This is a test to verify OpenAI integration is working.'
+        // });
       } catch (e) {
         // OpenAI API test failed
       }
