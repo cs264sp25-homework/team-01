@@ -1,5 +1,4 @@
 // plate-editor.tsx
-'use client';
 
 import { useEffect, useCallback, useState } from 'react';
 import { DndProvider } from 'react-dnd';
