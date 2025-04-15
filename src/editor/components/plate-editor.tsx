@@ -1,4 +1,6 @@
-import { useEffect, useCallback, useState } from "react";
+'use client';
+
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Plate } from "@udecode/plate/react";
@@ -29,6 +31,7 @@ import {
   DialogTitle 
 } from '@/plate-ui/dialog';
 import { Input } from '@/plate-ui/input';
+import React from 'react';
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
@@ -67,19 +70,40 @@ export function PlateEditor({
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
-  const initialValue = initialContent
-    ? JSON.parse(initialContent || "[]")
-    : [{ type: "p", children: [{ text: "" }] }];
+  // Parse initialContent for the editor
+  const parsedInitialContent = useMemo(() => {
+    if (!initialContent) return [{ type: "p", children: [{ text: "" }] }];
+    
+    try {
+      const parsed = JSON.parse(initialContent);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      console.error("Error parsing initialContent:", e);
+      return [{ type: "p", children: [{ text: "" }] }];
+    }
+  }, [initialContent]);
 
   // Create the editor and include the custom search plugin as part of the override.
   const editor = useCreateEditor({
-    value: initialValue,
+    value: parsedInitialContent,
     override: {
       plugins: {
         search: createSearchHighlightPlugin(),
       },
     },
   });
+
+  // Set global editor reference for plugin access
+  useEffect(() => {
+    if (editor) {
+      (window as any).__PLATE_EDITOR__ = editor;
+      
+      // Use the store function from copilot-plugin if available
+      if (typeof (window as any).__STORE_EDITOR_REF__ === 'function') {
+        (window as any).__STORE_EDITOR_REF__(editor);
+      }
+    }
+  }, [editor]);
 
   const saveContent = useCallback(
     (isManualSave = true) => {
@@ -106,6 +130,32 @@ export function PlateEditor({
     setIsDirty(true);
     if (autoSave) debouncedSave();
   }, [autoSave, debouncedSave]);
+  
+  // Expose handleEditorChange globally for plugins to access
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ = handleEditorChange;
+      
+      // Also store the plate instance if possible
+      if (typeof (window as any).__PLATE_INSTANCE__ === 'undefined') {
+        setTimeout(() => {
+          try {
+            // Look for the Plate component in React fibers
+            document.querySelectorAll('[data-slate-plugin-plate]');
+          } catch (e) {
+            // Error finding Plate instance
+          }
+        }, 500);
+      }
+    }
+    
+    return () => {
+      // Clean up global reference when component unmounts
+      if (typeof window !== 'undefined') {
+        delete (window as any).__PLATE_EDITOR_HANDLE_CHANGE__;
+      }
+    };
+  }, [handleEditorChange]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -129,17 +179,55 @@ export function PlateEditor({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
+  
+  // Listen for external changes from plugins (like copilot)
+  useEffect(() => {
+    const handleExternalChange = () => {
+      // Mark as dirty and trigger autosave if enabled
+      setIsDirty(true);
+      if (autoSave) debouncedSave();
+    };
+    
+    // Direct save content trigger from plugins
+    const handleSaveContent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const isManual = customEvent.detail?.manual === true;
+      saveContent(isManual);
+    };
+    
+    // Force save with specific content
+    const handleForceSave = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.content && onUpdate) {
+        const content = JSON.stringify(customEvent.detail.content);
+        onUpdate(content, false);
+        setLastSavedAt(new Date());
+        setIsDirty(false);
+      }
+    };
+    
+    // Listen for our custom events
+    document.addEventListener('plate-editor-change', handleExternalChange);
+    document.addEventListener('editor-content-changed', handleExternalChange);
+    document.addEventListener('plate-editor-save-content', handleSaveContent);
+    document.addEventListener('plate-editor-force-save', handleForceSave);
+    
+    return () => {
+      document.removeEventListener('plate-editor-change', handleExternalChange);
+      document.removeEventListener('editor-content-changed', handleExternalChange);
+      document.removeEventListener('plate-editor-save-content', handleSaveContent);
+      document.removeEventListener('plate-editor-force-save', handleForceSave);
+    };
+  }, [autoSave, debouncedSave, saveContent, onUpdate]);
 
   const organizeNotes = useCallback(async () => {
     try {
       setIsOrganizing(true);
       toast.loading("Organizing your notes...", { id: "organize-notes" });
       const currentContent = JSON.stringify(editor.children);
-      console.log("Current content:", currentContent);
       const { organizedContent } = await organizeNotesAction({
         content: currentContent,
       });
-      console.log("Organized content:", organizedContent);
       try {
         const rawContent = organizedContent.trim();
         let processedContent;
@@ -173,7 +261,6 @@ export function PlateEditor({
         );
       }
     } catch (error) {
-      console.error("Error organizing notes:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to organize notes",
         { id: "organize-notes" }

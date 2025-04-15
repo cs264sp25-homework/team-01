@@ -1,8 +1,9 @@
-import { action } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import OpenAI from "openai";
 import { api } from "./_generated/api";
+import { Configuration, OpenAIApi } from "openai-edge";
 
 // Organize notes using OpenAI
 export const organizeNotes = action({
@@ -210,51 +211,62 @@ export const organizeNotes = action({
   },
 });
 
-// Add text completion action for the copilot plugin
+// Set up OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const edgeConfiguration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openaiEdge = new OpenAIApi(edgeConfiguration);
+
+// This action completes text based on a prompt - used for the ghost text feature
 export const completeText = action({
   args: {
     prompt: v.string(),
   },
-  handler: async (_, args) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new ConvexError({
-        code: 500,
-        message: "OpenAI API key not configured"
-      });
-    }
-
+  handler: async (ctx, args) => {
     try {
-      // Initialize OpenAI client
-      const openai = new OpenAI({ apiKey });
-
-      // Generate completion with OpenAI
+      // Prepare the API parameters for text completion
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-3.5-turbo-0125",
         messages: [
           {
             role: "system",
-            content: "You are an advanced AI writing assistant. Continue the text naturally up to the next punctuation mark. Keep it concise and maintain the style and tone.",
+            content: `You are an AI writing assistant that predicts and suggests the next part of text that a user might want to write. 
+Your task is to continue the text naturally, completing the thought or idea.
+
+Rules:
+- Continue the text naturally with 10-30 words.
+- Match the style, tone, and format of the existing text.
+- Don't repeat what's already in the prompt.
+- If it's a list, continue with more relevant items.
+- If it's code, continue with logical next steps.
+- For technical content, maintain accuracy and terminology.
+- For creative writing, maintain consistent voice and style.
+- Respond ONLY with the completion text. No explanations or formatting.`
           },
           {
             role: "user",
-            content: `Continue this text: "${args.prompt}"`,
+            content: `Please complete the following text naturally. Don't include any explanation, just provide the completion.
+
+Text to complete: "${args.prompt}"`
           },
         ],
-        max_tokens: 50,
         temperature: 0.7,
+        max_tokens: 100,
+        top_p: 1,
       });
 
-      // Return the completion
-      return {
-        text: completion.choices[0].message.content?.trim() || "",
-      };
+      // Extract the completion text
+      const text = completion.choices[0]?.message?.content || "";
+      console.log("Generated completion:", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
+      
+      return { text };
     } catch (error) {
-      console.error("Error in completeText action:", error);
-      throw new ConvexError({
-        code: 500,
-        message: "Failed to generate text completion",
-      });
+      console.error("Error completing text:", error);
+      return { error: "Failed to generate completion", text: "" };
     }
   },
 });
