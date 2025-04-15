@@ -13,6 +13,7 @@ import { Button } from '@/ui/button';
 import { SaveIcon, SearchIcon, ListFilterIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { SearchBar, createSearchHighlightPlugin } from '@/editor/components/search-bar';
+import React from 'react';
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
@@ -45,22 +46,29 @@ export function PlateEditor({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(true);
   const [isOrganizing, setIsOrganizing] = useState(false);
+  const [currentContent, setCurrentContent] = useState(initialContent ? JSON.parse(initialContent) : [{ type: "p", children: [{ text: "" }] }]);
+  const [id, setId] = useState('');
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
-  const initialValue = initialContent
-    ? JSON.parse(initialContent || "[]")
-    : [{ type: "p", children: [{ text: "" }] }];
+  const editorRef = React.useRef<typeof Editor | null>(null);
 
   // Create the editor and include the custom search plugin as part of the override.
   const editor = useCreateEditor({
-    value: initialValue,
+    value: currentContent,
     override: {
       plugins: {
         search: createSearchHighlightPlugin(),
       },
     },
   });
+
+  // Set global editor reference for plugin access
+  React.useEffect(() => {
+    if (editorRef.current) {
+      (window as any).__PLATE_EDITOR__ = editorRef.current;
+    }
+  }, [editorRef.current]);
 
   const saveContent = useCallback(
     (isManualSave = true) => {
@@ -113,9 +121,7 @@ export function PlateEditor({
       setIsOrganizing(true);
       toast.loading("Organizing your notes...", { id: "organize-notes" });
       const currentContent = JSON.stringify(editor.children);
-      console.log("Current content:", currentContent);
       const { organizedContent } = await organizeNotesAction({ content: currentContent });
-      console.log("Organized content:", organizedContent);
       try {
         const rawContent = organizedContent.trim();
         let processedContent;
@@ -125,7 +131,6 @@ export function PlateEditor({
           if (processedContent.length === 0)
             throw new Error("Empty array returned from AI");
         } catch (e) {
-          console.error("JSON parsing error:", e, rawContent);
           throw new Error("Invalid response from AI. Could not parse as JSON array.");
         }
         editor.children = processedContent;
@@ -138,11 +143,9 @@ export function PlateEditor({
         }, 0);
         toast.success("Notes organized successfully!", { id: "organize-notes" });
       } catch (parseError) {
-        console.error("Error parsing organized content:", parseError);
         toast.error("Failed to apply organized notes - invalid format returned", { id: "organize-notes" });
       }
     } catch (error) {
-      console.error("Error organizing notes:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to organize notes",
         { id: "organize-notes" }
@@ -151,6 +154,14 @@ export function PlateEditor({
       setIsOrganizing(false);
     }
   }, [editor, handleEditorChange, organizeNotesAction]);
+
+  // Save content to local storage when it changes
+  const handleContentChange = React.useCallback((newValue: any) => {
+    // Only save if the content is different from the current content
+    if (JSON.stringify(newValue) !== JSON.stringify(currentContent)) {
+      setCurrentContent(newValue);
+    }
+  }, [currentContent]);
 
   return (
     <DndProvider backend={HTML5Backend}>
