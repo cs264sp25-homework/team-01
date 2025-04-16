@@ -251,7 +251,6 @@ Rules:
 - Match the style, tone, and format of the existing text.
 - Don't repeat what's already in the prompt.
 - If it's a list, continue with more relevant items.
-- If it's code, continue with logical next steps.
 - For technical content, maintain accuracy and terminology.
 - For creative writing, maintain consistent voice and style.
 - Respond ONLY with the completion text. No explanations or formatting.`
