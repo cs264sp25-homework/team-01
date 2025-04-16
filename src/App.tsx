@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignIn } from "./auth/components/sign-in";
 import { SignOut } from "./auth/components/sign-out";
@@ -14,11 +14,14 @@ import { Switch } from "../src/ui/switch";
 
 interface Note {
   _id: Id<"notes">;
-  _creationTime: number;
+  _creationTime?: number;
   title: string;
   content: string;
+  userId?: string;
+  createdAt?: number;
   updatedAt: number;
   contentPreview?: string;
+  similarity?: number;
 }
 
 function MainContent() {
@@ -33,10 +36,62 @@ function MainContent() {
   const renameNote = useMutation(api.notes.rename);
   const deleteNote = useMutation(api.notes.remove);
   const notes = useQuery(api.notes.list);
-  const searchResults = useQuery(
+  
+  // Use regular search or semantic search based on the toggle
+  const regularSearchResults = useQuery(
     api.notes.search,
-    searchQuery.length >= 2 ? { query: searchQuery } : "skip"
+    searchQuery.length >= 2 && !useSemanticSearch ? { query: searchQuery } : "skip"
   );
+  
+  // For semantic search, we need to use an action
+  const semanticSearchAction = useAction(api.notes.semanticSearch);
+  const regenerateEmbeddingsAction = useAction(api.notes.regenerateAllEmbeddings);
+  const [semanticResults, setSemanticResults] = useState<Array<{
+    _id: Id<"notes">;
+    title: string;
+    content: string;
+    updatedAt: number;
+    contentPreview?: string;
+    similarity?: number;
+  }>>([]);
+  const [isLoadingSemanticResults, setIsLoadingSemanticResults] = useState(false);
+  
+  // Update the semantic search indicator to use the loading state
+  const isSemanticSearchActive = searchQuery.length >= 2 && useSemanticSearch;
+  const showSemanticLoadingIndicator = isSemanticSearchActive && isLoadingSemanticResults;
+  const showSemanticActiveIndicator = isSemanticSearchActive && semanticResults.length > 0 && !isLoadingSemanticResults;
+
+  // Handle semantic search
+  useEffect(() => {
+    let isCancelled = false;
+    
+    const performSemanticSearch = async () => {
+      if (searchQuery.length >= 2 && useSemanticSearch) {
+        setIsLoadingSemanticResults(true);
+        try {
+          const results = await semanticSearchAction({ query: searchQuery });
+          if (!isCancelled) {
+            setSemanticResults(results);
+            setIsLoadingSemanticResults(false);
+          }
+        } catch (error) {
+          console.error("Semantic search error:", error);
+          if (!isCancelled) {
+            setSemanticResults([]);
+            setIsLoadingSemanticResults(false);
+          }
+        }
+      } else {
+        setSemanticResults([]);
+      }
+    };
+    
+    performSemanticSearch();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [searchQuery, useSemanticSearch, semanticSearchAction]);
 
   // Filter notes based on search query
   const filteredNotes = useMemo(() => {
@@ -44,8 +99,8 @@ function MainContent() {
       return notes;
     }
     
-    return searchResults || [];
-  }, [notes, searchQuery, searchResults]);
+    return useSemanticSearch ? semanticResults : regularSearchResults || [];
+  }, [notes, searchQuery, regularSearchResults, useSemanticSearch, semanticResults]);
 
   useEffect(() => {
     console.log("MainContent mounted");
@@ -128,15 +183,50 @@ function MainContent() {
               )}
             </div>
             
-            {/* Semantic search toggle (disabled for now) */}
+            {/* Semantic search toggle */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Semantic search</span>
+              <span className="text-sm text-gray-600">
+                Semantic search
+                {showSemanticLoadingIndicator && 
+                  <span className="ml-2 text-xs animate-pulse text-blue-500">
+                    (loading...)
+                  </span>
+                }
+                {showSemanticActiveIndicator && 
+                  <span className="ml-2 text-xs text-green-500" title="Showing conceptually related results">
+                    (concept match)
+                  </span>
+                }
+              </span>
               <Switch
                 checked={useSemanticSearch}
                 onCheckedChange={setUseSemanticSearch}
                 aria-label="Toggle semantic search"
-                disabled
               />
+              
+              {useSemanticSearch && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Regenerate embeddings for all notes? This will improve search accuracy but may take a moment.")) {
+                      try {
+                        const result = await regenerateEmbeddingsAction({});
+                        if (result.success) {
+                          alert(`Successfully reprocessed ${result.count} notes for better search accuracy.`);
+                        } else {
+                          alert("Failed to regenerate embeddings.");
+                        }
+                      } catch (error) {
+                        console.error("Error regenerating embeddings:", error);
+                        alert("An error occurred while regenerating embeddings.");
+                      }
+                    }
+                  }}
+                  className="px-2 py-1 ml-2 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
+                  title="Reprocess all notes to improve search accuracy"
+                >
+                  Improve Search
+                </button>
+              )}
             </div>
             
             <button

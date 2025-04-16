@@ -3,8 +3,8 @@ import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 
 // Configuration
-const CHUNK_SIZE = 1000; // Characters per chunk
-const CHUNK_OVERLAP = 200; // Characters of overlap between chunks
+const CHUNK_SIZE = 500; // Reduced from 1000 to 500 for better semantic precision
+const CHUNK_OVERLAP = 100; // Characters of overlap between chunks
 
 // Define types for Plate editor content
 interface PlateTextNode {
