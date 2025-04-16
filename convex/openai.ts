@@ -238,7 +238,7 @@ export const completeText = action({
    try {
      // Prepare the API parameters for text completion
      const completion = await openai.chat.completions.create({
-       model: "gpt-3.5-turbo-0125",
+       model: "gpt-4o",
        messages: [
          {
            role: "system",
