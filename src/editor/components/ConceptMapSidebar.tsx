@@ -57,6 +57,33 @@ export default function ConceptMapSidebar({
   // Get the generateConceptMap action
   const generateConceptMapAction = useAction(api.openai.generateConceptMap);
 
+  // Auto fit view when nodes are loaded or component is resized
+  useEffect(() => {
+    if (reactFlowInstance && nodes.length > 0) {
+      // Small delay to ensure the container has properly rendered
+      const timeoutId = setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.1 });
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [reactFlowInstance, nodes, conceptMap]);
+
+  // Handle container resizes
+  useEffect(() => {
+    if (reactFlowRef.current && reactFlowInstance && nodes.length > 0) {
+      const observer = new ResizeObserver(() => {
+        // Small delay to ensure resize is complete
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.1 });
+        }, 100);
+      });
+
+      observer.observe(reactFlowRef.current);
+      return () => observer.disconnect();
+    }
+  }, [reactFlowInstance, nodes]);
+
   // Apply styling to the nodes and edges
   const applyStyles = (conceptMapData: any) => {
     if (!conceptMapData) return;
@@ -256,11 +283,12 @@ export default function ConceptMapSidebar({
             </Button>
           </div>
         ) : (
-          <div className="w-full h-full" ref={reactFlowRef}>
+          <div className="w-full h-full pb-16" ref={reactFlowRef}>
             <ReactFlow
               nodes={nodes}
               edges={edges}
               fitView
+              fitViewOptions={{ padding: 0.2 }}
               attributionPosition="bottom-right"
               onInit={setReactFlowInstance}
             >
