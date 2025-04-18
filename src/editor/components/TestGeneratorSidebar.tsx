@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { XIcon, BookOpen, CheckCircle, RefreshCw, Trash2, Edit, Save, List, MapPin } from "lucide-react";
+import { XIcon, BookOpen, CheckCircle, RefreshCw, Trash2, Edit, Save, List, MapPin, Check, X } from "lucide-react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -7,13 +7,13 @@ import { Slider } from "@/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
 import { useState, useEffect } from "react";
-import { searchHighlight } from "../plugins/searchHighlightPlugin";
 import { Input } from "@/plate-ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/plate-ui/dialog";
 import { 
   GeneratedTest, 
   TestGeneratorSidebarProps 
 } from "../types/test-generator-types";
+import { searchHighlight } from "../plugins/searchHighlightPlugin";
 
 export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }: TestGeneratorSidebarProps) {
   // State for test generation options
@@ -43,11 +43,17 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   // Add this to your state declarations
   const [highlightedSources, setHighlightedSources] = useState<Record<number, boolean>>({});
 
+  // Add new state for short answer grading
+  const [shortAnswerGrades, setShortAnswerGrades] = useState<Record<number, { score: number; feedback: string }>>({});
+  const [isGrading, setIsGrading] = useState(false);
+
+  // Update the handleSubmitTest function to track grading progress
+  const [gradingProgress, setGradingProgress] = useState<{ total: number; completed: number }>({ total: 0, completed: 0 });
+
   // Fetch saved tests
   const savedTests = useQuery(api.tests.getByNote, { noteId });
 
   // We'll use the existing OpenAI action pattern from your codebase
-  const generateTestAction = useAction(api.testGenerator.generateTest);
   const getSavedTestAction = useAction(api.testGenerator.getSavedTest);
   
   // Mutations for test management
@@ -55,16 +61,28 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const updateTestMutation = useMutation(api.tests.update);
   const removeTestMutation = useMutation(api.tests.remove);
 
+  // Add the action hooks
+  const generateTestAction = useAction(api.testGenerator.generateTest);
+  const gradeShortAnswerAction = useAction(api.testGenerator.gradeShortAnswer);
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
+      // Get only the selected question types
+      const selectedTypes = Object.entries(questionTypes)
+        .filter(([type, selected]) => selected)
+        .map(([type]) => type);
+      
+      // Ensure at least one question type is selected
+      if (selectedTypes.length === 0) {
+        throw new Error("Please select at least one question type");
+      }
+
       const result = await generateTestAction({
         noteId: noteId,
         options: {
           numQuestions,
-          types: Object.entries(questionTypes)
-            .filter(([, selected]) => selected)
-            .map(([type]) => type),
+          types: selectedTypes,
           difficulty,
         },
       });
@@ -90,9 +108,42 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     }));
   };
 
-  const handleSubmitTest = () => {
+  const handleSubmitTest = async () => {
+    if (!generatedTest) return;
+    
     setIsSubmitted(true);
     setShowAnswers(true);
+    
+    // Count how many short answer questions need grading
+    const shortAnswerQuestions = generatedTest.questions.filter(q => q.type === "shortAnswer" && userAnswers[generatedTest.questions.indexOf(q)]);
+    setGradingProgress({ total: shortAnswerQuestions.length, completed: 0 });
+    
+    // Grade short answer questions
+    setIsGrading(true);
+    const newGrades: Record<number, { score: number; feedback: string }> = {};
+    
+    for (let i = 0; i < generatedTest.questions.length; i++) {
+      const question = generatedTest.questions[i];
+      const userAnswer = userAnswers[i];
+      if (question.type === "shortAnswer" && userAnswer) {
+        try {
+          const result = await gradeShortAnswerAction({
+            question: question.question,
+            answer: question.answer,
+            userAnswer: userAnswer,
+          });
+          newGrades[i] = result;
+          setGradingProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
+        } catch (error) {
+          console.error("Error grading short answer:", error);
+          newGrades[i] = { score: 0, feedback: "Error grading answer" };
+          setGradingProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
+        }
+      }
+    }
+    
+    setShortAnswerGrades(newGrades);
+    setIsGrading(false);
   };
 
   const isAnswerCorrect = (questionIndex: number) => {
@@ -121,18 +172,32 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     return null;
   };
 
-  // Add this function to calculate the score
+  // Update the calculateScore function to properly count all correct answers
   const calculateScore = () => {
     if (!generatedTest || !isSubmitted) return { correct: 0, total: 0 };
     
-    // Only count questions that can be automatically graded (exclude short answer)
-    const gradableQuestions = generatedTest.questions.filter(q => q.type !== "shortAnswer");
+    let correct = 0;
+    const total = generatedTest.questions.length;
     
-    const correct = gradableQuestions.reduce((count, _, index) => {
-      return isAnswerCorrect(index) === true ? count + 1 : count;
-    }, 0);
+    // Check each question
+    for (let i = 0; i < generatedTest.questions.length; i++) {
+      const question = generatedTest.questions[i];
+      const userAnswer = userAnswers[i];
+      
+      if (!userAnswer) continue;
+      
+      if (question.type === "shortAnswer") {
+        // For short answer, use the graded score (0 or 1)
+        correct += shortAnswerGrades[i]?.score || 0;
+      } else {
+        // For other question types, use the existing isAnswerCorrect function
+        if (isAnswerCorrect(i) === true) {
+          correct += 1;
+        }
+      }
+    }
     
-    return { correct, total: gradableQuestions.length };
+    return { correct, total };
   };
 
   // Add this function to handle retaking the test
@@ -423,12 +488,32 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                 {generatedTest.questions.map((question, index) => (
                   <div key={index} className="p-4 border rounded-md space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Question {index + 1} • {question.type === "mcq" ? "Multiple Choice" : 
-                                              question.type === "shortAnswer" ? "Short Answer" : 
-                                              question.type === "trueFalse" ? "True/False" : 
-                                              "Fill in the Blank"}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Question {index + 1}
+                        </span>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          • {question.type === "mcq" ? "Multiple Choice" : 
+                             question.type === "shortAnswer" ? "Short Answer" : 
+                             question.type === "trueFalse" ? "True/False" : 
+                             "Fill in the Blank"}
+                        </span>
+                        {isSubmitted && (
+                          <>
+                            {question.type === "shortAnswer" ? (
+                              shortAnswerGrades[index]?.score === 1 ? (
+                                <Check className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <X className="w-4 h-4 text-red-500" />
+                              )
+                            ) : isAnswerCorrect(index) === true ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : isAnswerCorrect(index) === false ? (
+                              <X className="w-4 h-4 text-red-500" />
+                            ) : null}
+                          </>
+                        )}
+                      </div>
                       {showAnswers && question.source && (
                         <Button
                           variant={highlightedSources[index] ? "default" : "ghost"}
@@ -559,6 +644,16 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                           disabled={isSubmitted}
                           className="w-full p-2 border rounded-md min-h-[100px]"
                         />
+                        {isSubmitted && shortAnswerGrades[index] && (
+                          <div className="mt-2 p-3 rounded-md bg-muted/50">
+                            <div className="text-sm font-medium">
+                              {shortAnswerGrades[index].score === 1 ? "Correct" : "Incorrect"}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              {shortAnswerGrades[index].feedback}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                     
@@ -665,39 +760,54 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
             </Button>
           ) : isSubmitted ? (
             <div className="text-center">
-              {/* Display the score here */}
-              <p className="text-sm mb-2 font-medium">
-                Score: {calculateScore().correct} of {calculateScore().total} correct
-                {calculateScore().total > 0 && 
-                  ` (${Math.round((calculateScore().correct / calculateScore().total) * 100)}%)`}
-              </p>
-              <div className="flex space-x-2">
-                {!selectedTestId && (
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={openSaveDialog}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Test
-                  </Button>
-                )}
-                <Button 
-                  variant="secondary" 
-                  className="flex-1"
-                  onClick={handleRetakeTest}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Retake Test
-                </Button>
-                <Button 
-                  variant="default" 
-                  className="flex-1"
-                  onClick={handleNewTest}
-                >
-                  New Test
-                </Button>
-              </div>
+              {isGrading ? (
+                <div className="space-y-4">
+                  <div className="text-sm font-medium">
+                    Grading short answer questions...
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {gradingProgress.completed} of {gradingProgress.total} questions graded
+                  </div>
+                  <div className="flex justify-center">
+                    <div className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm mb-2 font-medium">
+                    Score: {calculateScore().correct} of {calculateScore().total} correct
+                    {calculateScore().total > 0 && 
+                      ` (${Math.round((calculateScore().correct / calculateScore().total) * 100)}%)`}
+                  </p>
+                  <div className="flex space-x-2">
+                    {!selectedTestId && (
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={openSaveDialog}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Test
+                      </Button>
+                    )}
+                    <Button 
+                      variant="secondary" 
+                      className="flex-1"
+                      onClick={handleRetakeTest}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Retake Test
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      className="flex-1"
+                      onClick={handleNewTest}
+                    >
+                      New Test
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <Button 
