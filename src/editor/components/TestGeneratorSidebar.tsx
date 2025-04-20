@@ -1,24 +1,28 @@
-import { Button } from "@/ui/button";
-import { XIcon, BookOpen, CheckCircle, RefreshCw, Trash2, Edit, Save, List, MapPin, Check, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { Slider } from "@/ui/slider";
-import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
-import { useState, useEffect } from "react";
-import { Input } from "@/plate-ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/plate-ui/dialog";
+import { searchHighlight } from "../plugins/searchHighlightPlugin";
+import { TestGeneratorHeader } from "./test-generator/TestGeneratorHeader";
+import { TestGeneratorOptions } from "./test-generator/TestGeneratorOptions";
+import { TestQuestionList } from "./test-generator/TestQuestionList";
+import { SavedTestsList } from "./test-generator/SavedTestsList";
+import { TestGeneratorFooter } from "./test-generator/TestGeneratorFooter";
+import { RenameDialog, SaveDialog } from "./test-generator/TestGeneratorDialogs";
 import { 
   GeneratedTest, 
-  TestGeneratorSidebarProps 
-} from "../types/test-generator-types";
-import { searchHighlight } from "../plugins/searchHighlightPlugin";
+  TestGeneratorSidebarProps,
+  QuestionTypes,
+  GradingProgress,
+  ShortAnswerGrade
+} from "./test-generator/test-generator-types";
+import { getSelectedQuestionTypes } from "./test-generator/test-generator-utils";
 
 export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }: TestGeneratorSidebarProps) {
   // State for test generation options
   const [numQuestions, setNumQuestions] = useState(5);
-  const [questionTypes, setQuestionTypes] = useState({
+  const [questionTypes, setQuestionTypes] = useState<QuestionTypes>({
     mcq: true,
     shortAnswer: false,
     trueFalse: false,
@@ -44,11 +48,9 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const [highlightedSources, setHighlightedSources] = useState<Record<number, boolean>>({});
 
   // Add new state for short answer grading
-  const [shortAnswerGrades, setShortAnswerGrades] = useState<Record<number, { score: number; feedback: string }>>({});
+  const [shortAnswerGrades, setShortAnswerGrades] = useState<Record<number, ShortAnswerGrade>>({});
   const [isGrading, setIsGrading] = useState(false);
-
-  // Update the handleSubmitTest function to track grading progress
-  const [gradingProgress, setGradingProgress] = useState<{ total: number; completed: number }>({ total: 0, completed: 0 });
+  const [gradingProgress, setGradingProgress] = useState<GradingProgress>({ total: 0, completed: 0 });
 
   // Fetch saved tests
   const savedTests = useQuery(api.tests.getByNote, { noteId });
@@ -68,10 +70,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      // Get only the selected question types
-      const selectedTypes = Object.entries(questionTypes)
-        .filter(([type, selected]) => selected)
-        .map(([type]) => type);
+      const selectedTypes = getSelectedQuestionTypes(questionTypes);
       
       // Ensure at least one question type is selected
       if (selectedTypes.length === 0) {
@@ -120,7 +119,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     
     // Grade short answer questions
     setIsGrading(true);
-    const newGrades: Record<number, { score: number; feedback: string }> = {};
+    const newGrades: Record<number, ShortAnswerGrade> = {};
     
     for (let i = 0; i < generatedTest.questions.length; i++) {
       const question = generatedTest.questions[i];
@@ -146,111 +145,40 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     setIsGrading(false);
   };
 
-  const isAnswerCorrect = (questionIndex: number) => {
-    if (!generatedTest || !isSubmitted) return null;
-    
-    const question = generatedTest.questions[questionIndex];
-    const userAnswer = userAnswers[questionIndex];
-    
-    if (!userAnswer) return false;
-    
-    if (question.type === "mcq") {
-      // The answer might be the full text of the option or just the option label
-      const optionIndex = "ABCDEFGH".indexOf(userAnswer);
-      if (optionIndex >= 0 && question.options) {
-        // If user selected A, B, C, D, check if the correct answer is the corresponding option text
-        return question.answer === question.options[optionIndex] || 
-               question.answer === userAnswer;
-      }
-      return false;
-    } else if (question.type === "trueFalse") {
-      return question.answer.toLowerCase() === userAnswer.toLowerCase();
-    } else if (question.type === "fillInBlank") {
-      return question.answer.toLowerCase().trim() === userAnswer.toLowerCase().trim();
-    }
-    
-    return null;
-  };
-
-  // Update the calculateScore function to properly count all correct answers
-  const calculateScore = () => {
-    if (!generatedTest || !isSubmitted) return { correct: 0, total: 0 };
-    
-    let correct = 0;
-    const total = generatedTest.questions.length;
-    
-    // Check each question
-    for (let i = 0; i < generatedTest.questions.length; i++) {
-      const question = generatedTest.questions[i];
-      const userAnswer = userAnswers[i];
-      
-      if (!userAnswer) continue;
-      
-      if (question.type === "shortAnswer") {
-        // For short answer, use the graded score (0 or 1)
-        correct += shortAnswerGrades[i]?.score || 0;
-      } else {
-        // For other question types, use the existing isAnswerCorrect function
-        if (isAnswerCorrect(i) === true) {
-          correct += 1;
-        }
-      }
-    }
-    
-    return { correct, total };
-  };
-
-  // Add this function to handle retaking the test
   const handleRetakeTest = () => {
-    // Reset user answers and submission state but keep the same test
     setUserAnswers({});
     setIsSubmitted(false);
   };
 
-  // Add this useEffect to clear highlights when component unmounts
   useEffect(() => {
-    // Return cleanup function that will run when component unmounts
     return () => {
-      // Find the editor element
       const editorEl = document.querySelector('[data-slate-editor="true"]') as HTMLElement;
       if (editorEl) {
-        // Clear any existing highlights
         searchHighlight.clear(editorEl);
       }
     };
   }, []);
 
-  // Update the handleNavigateToSource function
-  const handleNavigateToSource = (source: string | undefined, index: number) => {
-    if (!source || !navigateToText) return;
+  const handleNavigateToSource = (index: number) => {
+    const question = generatedTest?.questions[index];
+    if (!question?.source || !navigateToText) return;
     
-    // Toggle the highlight state for this question
     const isCurrentlyHighlighted = highlightedSources[index];
-    
-    // Find the editor element
     const editorEl = document.querySelector('[data-slate-editor="true"]') as HTMLElement;
     
     if (isCurrentlyHighlighted) {
-      // If already highlighted, clear the highlight
       if (editorEl) {
         searchHighlight.clear(editorEl);
       }
-      
-      // Update state
       setHighlightedSources(prev => ({
         ...prev,
         [index]: false
       }));
     } else {
-      // Clear any existing highlights first
       if (editorEl) {
         searchHighlight.clear(editorEl);
       }
-      
-      // Highlight the new source
-      navigateToText(source);
-      
-      // Update state - reset all to false, then set this one to true
+      navigateToText(question.source);
       setHighlightedSources(prev => {
         const newState: Record<number, boolean> = {};
         Object.keys(prev).forEach(key => {
@@ -262,7 +190,6 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
     }
   };
 
-  // New functions for test management
   const openSaveDialog = () => {
     if (!generatedTest) return;
     setSaveTestName(`Test ${new Date().toLocaleString()}`);
@@ -279,9 +206,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
         questions: generatedTest.questions,
         settings: {
           numQuestions,
-          types: Object.entries(questionTypes)
-            .filter(([, selected]) => selected)
-            .map(([type]) => type),
+          types: getSelectedQuestionTypes(questionTypes),
           difficulty,
         },
       });
@@ -345,130 +270,24 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background" style={{textAlign: 'left'}}>
-      {/* Header - fixed at top */}
-      <div className="flex items-center justify-between flex-shrink-0 p-4 border-b bg-muted/30">
-        <div className="flex flex-col">
-          <h3 className="text-lg font-semibold">Test Generator</h3>
-          <div className="flex items-center mt-1 text-xs text-muted-foreground">
-            <span className="inline-block w-2 h-2 mr-2 bg-blue-500 rounded-full"></span>
-            {view === "generate" ? "Create practice questions" : "Manage saved tests"}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setView(view === "generate" ? "list" : "generate")}
-            className="text-xs"
-          >
-            {view === "generate" ? (
-              <><List className="w-3 h-3 mr-1" /> Saved Tests</>
-            ) : (
-              <> </>
-            )}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <XIcon className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+      <TestGeneratorHeader
+        view={view}
+        onToggleView={() => setView(view === "generate" ? "list" : "generate")}
+        onClose={onClose}
+      />
 
-      {/* Content Area - scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{textAlign: 'left'}}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {view === "generate" ? (
           !generatedTest ? (
-            <>
-              <div className="space-y-4" style={{textAlign: 'left'}}>
-                <div style={{textAlign: 'left'}}>
-                  <label className="text-sm font-medium" style={{textAlign: 'left', display: 'block'}}>Number of Questions: {numQuestions}</label>
-                  <Slider
-                    value={[numQuestions]}
-                    min={1}
-                    max={20}
-                    step={1}
-                    onValueChange={(value) => setNumQuestions(value[0])}
-                    className="mt-2"
-                  />
-                </div>
-
-                <div style={{textAlign: 'left'}}>
-                  <label className="text-sm font-medium" style={{textAlign: 'left', display: 'block'}}>Question Types</label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="mcq"
-                        checked={questionTypes.mcq}
-                        onCheckedChange={(checked) =>
-                          setQuestionTypes({ ...questionTypes, mcq: !!checked })
-                        }
-                      />
-                      <label htmlFor="mcq" className="text-sm" style={{textAlign: 'left'}}>
-                        Multiple Choice
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="shortAnswer"
-                        checked={questionTypes.shortAnswer}
-                        onCheckedChange={(checked) =>
-                          setQuestionTypes({ ...questionTypes, shortAnswer: !!checked })
-                        }
-                      />
-                      <label htmlFor="shortAnswer" className="text-sm" style={{textAlign: 'left'}}>
-                        Short Answer
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="trueFalse"
-                        checked={questionTypes.trueFalse}
-                        onCheckedChange={(checked) =>
-                          setQuestionTypes({ ...questionTypes, trueFalse: !!checked })
-                        }
-                      />
-                      <label htmlFor="trueFalse" className="text-sm" style={{textAlign: 'left'}}>
-                        True/False
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="fillInBlank"
-                        checked={questionTypes.fillInBlank}
-                        onCheckedChange={(checked) =>
-                          setQuestionTypes({ ...questionTypes, fillInBlank: !!checked })
-                        }
-                      />
-                      <label htmlFor="fillInBlank" className="text-sm" style={{textAlign: 'left'}}>
-                        Fill in the Blank
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{textAlign: 'left'}}>
-                  <label className="text-sm font-medium" style={{textAlign: 'left', display: 'block'}}>Difficulty</label>
-                  <RadioGroup
-                    value={difficulty}
-                    onValueChange={(value) => setDifficulty(value)}
-                    className="mt-2 flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="easy" id="easy" />
-                      <label htmlFor="easy" className="text-sm">Easy</label>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="medium" id="medium" />
-                      <label htmlFor="medium" className="text-sm">Medium</label>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="hard" id="hard" />
-                      <label htmlFor="hard" className="text-sm">Hard</label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-            </>
+            <TestGeneratorOptions
+              numQuestions={numQuestions}
+              onNumQuestionsChange={setNumQuestions}
+              questionTypes={questionTypes}
+              onQuestionTypesChange={setQuestionTypes}
+              difficulty={difficulty}
+              onDifficultyChange={setDifficulty}
+            />
           ) : (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -484,403 +303,71 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
                 </div>
               </div>
               
-              <div className="space-y-6 mb-4">
-                {generatedTest.questions.map((question, index) => (
-                  <div key={index} className="p-4 border rounded-md space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Question {index + 1}
-                        </span>
-                        <span className="text-xs font-medium text-muted-foreground">
-                          • {question.type === "mcq" ? "Multiple Choice" : 
-                             question.type === "shortAnswer" ? "Short Answer" : 
-                             question.type === "trueFalse" ? "True/False" : 
-                             "Fill in the Blank"}
-                        </span>
-                        {isSubmitted && (
-                          <>
-                            {question.type === "shortAnswer" ? (
-                              shortAnswerGrades[index]?.score === 1 ? (
-                                <Check className="w-4 h-4 text-green-500" />
-                              ) : (
-                                <X className="w-4 h-4 text-red-500" />
-                              )
-                            ) : isAnswerCorrect(index) === true ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : isAnswerCorrect(index) === false ? (
-                              <X className="w-4 h-4 text-red-500" />
-                            ) : null}
-                          </>
-                        )}
-                      </div>
-                      {showAnswers && question.source && (
-                        <Button
-                          variant={highlightedSources[index] ? "default" : "ghost"}
-                          size="sm"
-                          className={`text-xs h-5 px-2 ${highlightedSources[index] ? "bg-blue-500 text-white hover:bg-blue-600" : ""}`}
-                          onClick={() => handleNavigateToSource(question.source, index)}
-                        >
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {highlightedSources[index] ? "Hide in Notes" : "Find in Notes"}
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="font-medium text-sm">
-                      {question.question}
-                    </div>
-                    
-                    {question.type === "mcq" && (
-                      <div className="space-y-1.5">
-                        {question.options.map((option, optionIndex) => {
-                          const optionLabel = String.fromCharCode(65 + optionIndex); // A, B, C, D...
-                          const isSelected = userAnswers[index] === optionLabel;
-                          
-                          // Check if this option is the correct answer
-                          const isCorrect = question.answer === option || question.answer === optionLabel;
-                          
-                          // Determine styling based on submission state and correctness
-                          let bgClass = '';
-                          let borderClass = 'border-gray-300';
-                          
-                          if (isSubmitted) {
-                            if (isSelected && isCorrect) {
-                              // Selected and correct - should be green
-                              bgClass = 'bg-green-100 dark:bg-green-900/30';
-                              borderClass = 'bg-green-500 text-white border-green-500';
-                            } else if (isSelected && !isCorrect) {
-                              // Selected but incorrect - should be red
-                              bgClass = 'bg-red-100 dark:bg-red-900/30';
-                              borderClass = 'bg-red-500 text-white border-red-500';
-                            } else if (!isSelected && isCorrect && showAnswers) {
-                              // Not selected but is the correct answer (show when answers are visible)
-                              bgClass = 'bg-green-100 dark:bg-green-900/30';
-                              borderClass = 'bg-green-500 text-white border-green-500';
-                            }
-                          } else if (isSelected) {
-                            // Selected but not submitted yet
-                            bgClass = 'bg-blue-100 dark:bg-blue-900/30';
-                            borderClass = 'bg-blue-500 text-white border-blue-500';
-                          }
-                          
-                          return (
-                            <div 
-                              key={optionIndex}
-                              className={`flex items-start p-1.5 rounded-md cursor-pointer text-xs ${bgClass}`}
-                              onClick={() => !isSubmitted && handleUserAnswer(index, optionLabel)}
-                            >
-                              <div className={`flex items-center justify-center w-5 h-5 rounded-full border mr-2 ${borderClass}`}>
-                                {optionLabel}
-                              </div>
-                              <div className="flex-1">{option}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {question.type === "trueFalse" && (
-                      <div className="space-y-2">
-                        {["True", "False"].map((option) => {
-                          const isSelected = userAnswers[index] === option;
-                          const isCorrect = question.answer === option;
-                          // Only mark as incorrect if it's selected, submitted, and NOT correct
-                          const isIncorrect = isSubmitted && isSelected && !isCorrect;
-                          // Highlight as correct if it IS the correct answer, submitted, and showing answers
-                          const highlightCorrectAnswer = isSubmitted && isCorrect && showAnswers;
-                          
-                          return (
-                            <div 
-                              key={option}
-                              className={`flex items-center p-2 rounded-md cursor-pointer ${
-                                isSelected && !isSubmitted ? 'bg-blue-100 dark:bg-blue-900/30' : ''
-                              } ${
-                                highlightCorrectAnswer ? 'bg-green-100 dark:bg-green-900/30' : ''
-                              } ${
-                                isIncorrect ? 'bg-red-100 dark:bg-red-900/30' : ''
-                              }`}
-                              onClick={() => !isSubmitted && handleUserAnswer(index, option)}
-                            >
-                              <div className={`flex items-center justify-center w-6 h-6 rounded-full border mr-2 ${
-                                isSelected && !isSubmitted ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-300'
-                              } ${
-                                highlightCorrectAnswer ? 'bg-green-500 text-white border-green-500' : ''
-                              } ${
-                                isIncorrect ? 'bg-red-500 text-white border-red-500' : ''
-                              }`}>
-                                {option[0]}
-                              </div>
-                              <div>{option}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {question.type === "fillInBlank" && (
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          placeholder="Your answer"
-                          value={userAnswers[index] || ""}
-                          onChange={(e) => !isSubmitted && handleUserAnswer(index, e.target.value)}
-                          disabled={isSubmitted}
-                          className={`${
-                            isSubmitted && isAnswerCorrect(index) && showAnswers ? 'border-green-500' : ''
-                          } ${
-                            isSubmitted && isAnswerCorrect(index) === false && showAnswers ? 'border-red-500' : ''
-                          }`}
-                        />
-                      </div>
-                    )}
-                    
-                    {question.type === "shortAnswer" && (
-                      <div className="space-y-2">
-                        <textarea
-                          placeholder="Your answer"
-                          value={userAnswers[index] || ""}
-                          onChange={(e) => !isSubmitted && handleUserAnswer(index, e.target.value)}
-                          disabled={isSubmitted}
-                          className="w-full p-2 border rounded-md min-h-[100px]"
-                        />
-                        {isSubmitted && shortAnswerGrades[index] && (
-                          <div className="mt-2 p-3 rounded-md bg-muted/50">
-                            <div className="text-sm font-medium">
-                              {shortAnswerGrades[index].score === 1 ? "Correct" : "Incorrect"}
-                            </div>
-                            <div className="mt-1 text-sm text-muted-foreground">
-                              {shortAnswerGrades[index].feedback}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {showAnswers && (
-                      <div className="mt-2">
-                        <div className="text-xs font-medium text-muted-foreground">
-                          Answer: <span className="text-foreground">{question.answer}</span>
-                        </div>
-                        <div className="mt-1.5 text-xs text-muted-foreground italic p-1.5 border-l-2 border-muted">
-                          <span className="font-medium">Source:</span> "{question.source}"
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <TestQuestionList
+                generatedTest={generatedTest}
+                userAnswers={userAnswers}
+                onAnswerChange={handleUserAnswer}
+                isSubmitted={isSubmitted}
+                showAnswers={showAnswers}
+                shortAnswerGrades={shortAnswerGrades}
+                highlightedSources={highlightedSources}
+                onToggleHighlight={handleNavigateToSource}
+              />
             </div>
           )
         ) : (
           <div className="space-y-4">
             <h3 className="font-medium">Saved Tests</h3>
-            
-            {savedTests && savedTests.length > 0 ? (
-              <div className="space-y-2">
-                {savedTests.map((test) => (
-                  <div 
-                    key={test._id} 
-                    className="p-3 border rounded-md flex justify-between items-center hover:bg-muted/20"
-                  >
-                    <div className="flex-1">
-                      <h4 className="font-medium">{test.title}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(test.createdAt).toLocaleString()} • 
-                        {test.questions.length} questions • 
-                        {test.settings.difficulty} difficulty
-                      </p>
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleOpenTest(test._id)}
-                        title="Open Test"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => openRenameDialog(test._id, test.title)}
-                        title="Rename Test"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleDeleteTest(test._id)}
-                        title="Delete Test"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center p-6 border rounded-md bg-muted/10">
-                <p className="text-muted-foreground">No saved tests yet</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => setView("generate")}
-                >
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Create Your First Test
-                </Button>
-              </div>
-            )}
+            <SavedTestsList
+              savedTests={savedTests}
+              onOpenTest={handleOpenTest}
+              onRenameTest={openRenameDialog}
+              onDeleteTest={handleDeleteTest}
+              onSwitchToGenerate={() => setView("generate")}
+            />
           </div>
         )}
       </div>
 
-      {/* Footer - fixed at bottom */}
       <div className="flex-shrink-0 p-4 border-t bg-muted/20">
-        {view === "generate" ? (
-          !generatedTest ? (
-            <Button 
-              onClick={handleGenerate} 
-              className="w-full"
-              disabled={isGenerating || !Object.values(questionTypes).some(Boolean)}
-            >
-              {isGenerating ? (
-                <>
-                  <div className="mr-2 size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  Generate Test
-                </>
-              )}
-            </Button>
-          ) : isSubmitted ? (
-            <div className="text-center">
-              {isGrading ? (
-                <div className="space-y-4">
-                  <div className="text-sm font-medium">
-                    Grading short answer questions...
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {gradingProgress.completed} of {gradingProgress.total} questions graded
-                  </div>
-                  <div className="flex justify-center">
-                    <div className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm mb-2 font-medium">
-                    Score: {calculateScore().correct} of {calculateScore().total} correct
-                    {calculateScore().total > 0 && 
-                      ` (${Math.round((calculateScore().correct / calculateScore().total) * 100)}%)`}
-                  </p>
-                  <div className="flex space-x-2">
-                    {!selectedTestId && (
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={openSaveDialog}
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Test
-                      </Button>
-                    )}
-                    <Button 
-                      variant="secondary" 
-                      className="flex-1"
-                      onClick={handleRetakeTest}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Retake Test
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      className="flex-1"
-                      onClick={handleNewTest}
-                    >
-                      New Test
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <Button 
-              className="w-full"
-              onClick={handleSubmitTest}
-              disabled={Object.keys(userAnswers).length === 0}
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Submit Answers
-            </Button>
-          )
-        ) : (
-          <Button 
-            onClick={() => {
-              setView("generate");
-              handleNewTest();
-            }} 
-            className="w-full"
-          >
-            Create New Test
-          </Button>
-        )}
+        <TestGeneratorFooter
+          view={view}
+          generatedTest={generatedTest}
+          isGenerating={isGenerating}
+          isSubmitted={isSubmitted}
+          isGrading={isGrading}
+          gradingProgress={gradingProgress}
+          userAnswers={userAnswers}
+          selectedTestId={selectedTestId}
+          onGenerate={handleGenerate}
+          onSubmit={handleSubmitTest}
+          onSave={openSaveDialog}
+          onRetake={handleRetakeTest}
+          onNewTest={handleNewTest}
+          onSwitchToGenerate={() => {
+            setView("generate");
+            handleNewTest();
+          }}
+          questionTypes={questionTypes}
+        />
       </div>
 
-      {/* Rename Dialog */}
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Rename Test</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newTestName}
-              onChange={(e) => setNewTestName(e.target.value)}
-              placeholder="Enter new test name"
-              className="w-full"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleRenameTest} disabled={!newTestName.trim()}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameDialog
+        isOpen={isRenameDialogOpen}
+        onClose={() => setIsRenameDialogOpen(false)}
+        currentTitle={currentTestTitle}
+        newTestName={newTestName}
+        onNewTestNameChange={setNewTestName}
+        onRename={handleRenameTest}
+      />
 
-      {/* Save Test Dialog */}
-      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Save Test</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={saveTestName}
-              onChange={(e) => setSaveTestName(e.target.value)}
-              placeholder="Enter test name"
-              className="w-full"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveTest} disabled={!saveTestName.trim()}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SaveDialog
+        isOpen={isSaveDialogOpen}
+        onClose={() => setIsSaveDialogOpen(false)}
+        saveTestName={saveTestName}
+        onSaveTestNameChange={setSaveTestName}
+        onSave={handleSaveTest}
+      />
     </div>
   );
 } 
