@@ -1,5 +1,5 @@
 import { Button } from "@/ui/button";
-import { CheckCircle, RefreshCw, Save, ArrowLeft } from "lucide-react";
+import { CheckCircle, RefreshCw, Save, ArrowLeft, Loader2 } from "lucide-react";
 import { calculateScore } from "./test-generator-utils";
 import { GeneratedTest } from "./test-generator-types";
 
@@ -10,7 +10,7 @@ interface TestGeneratorFooterProps {
   isSubmitted: boolean;
   isGrading: boolean;
   gradingProgress: { total: number; completed: number };
-  userAnswers: Record<number, string | null>;
+  userAnswers: Record<string, string>;
   selectedTestId: string | null;
   onGenerate: () => void;
   onSubmit: () => void;
@@ -18,7 +18,7 @@ interface TestGeneratorFooterProps {
   onRetake: () => void;
   onNewTest: () => void;
   onSwitchToGenerate: () => void;
-  questionTypes: Record<string, boolean>;
+  hasValidSections: boolean;
 }
 
 export function TestGeneratorFooter({
@@ -36,7 +36,7 @@ export function TestGeneratorFooter({
   onRetake,
   onNewTest,
   onSwitchToGenerate,
-  questionTypes,
+  hasValidSections,
 }: TestGeneratorFooterProps) {
   if (view === "list") {
     return (
@@ -54,11 +54,11 @@ export function TestGeneratorFooter({
       <Button 
         onClick={onGenerate} 
         className="w-full"
-        disabled={isGenerating || !Object.values(questionTypes).some(Boolean)}
+        disabled={isGenerating || !hasValidSections}
       >
         {isGenerating ? (
           <>
-            <div className="mr-2 size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Generating...
           </>
         ) : (

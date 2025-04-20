@@ -19,6 +19,28 @@ import {
 } from "./test-generator/test-generator-types";
 import { getSelectedQuestionTypes } from "./test-generator/test-generator-utils";
 
+interface SavedTest {
+  _id: Id<"tests">;
+  _creationTime: number;
+  title: string;
+  noteId: Id<"notes">;
+  userId: string;
+  createdAt: number;
+  questions: Array<{
+    type: string;
+    question: string;
+    options?: string[];
+    answer: string;
+    source?: string;
+  }>;
+  settings: {
+    numQuestions: number;
+    types: string[];
+    difficulty: string;
+    sections: string[];
+  };
+}
+
 export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }: TestGeneratorSidebarProps) {
   // State for test generation options
   const [numQuestions, setNumQuestions] = useState(5);
@@ -34,6 +56,8 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const [showAnswers, setShowAnswers] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<number, string | null>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  const [hasValidSections, setHasValidSections] = useState(true);
   
   // New state for test management
   const [view, setView] = useState<"generate" | "list">("generate");
@@ -53,7 +77,8 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const [gradingProgress, setGradingProgress] = useState<GradingProgress>({ total: 0, completed: 0 });
 
   // Fetch saved tests
-  const savedTests = useQuery(api.tests.getByNote, { noteId });
+  const savedTests = useQuery(api.tests.getByNote, { noteId }) as SavedTest[] | null;
+  const note = useQuery(api.notes.get, { id: noteId });
 
   // We'll use the existing OpenAI action pattern from your codebase
   const getSavedTestAction = useAction(api.testGenerator.getSavedTest);
@@ -68,6 +93,8 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const gradeShortAnswerAction = useAction(api.testGenerator.gradeShortAnswer);
 
   const handleGenerate = async () => {
+    if (!hasValidSections) return;
+    
     setIsGenerating(true);
     try {
       const selectedTypes = getSelectedQuestionTypes(questionTypes);
@@ -83,6 +110,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
           numQuestions,
           types: selectedTypes,
           difficulty,
+          sections: selectedSections,
         },
       });
       setGeneratedTest(result as GeneratedTest);
@@ -287,6 +315,9 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
               onQuestionTypesChange={setQuestionTypes}
               difficulty={difficulty}
               onDifficultyChange={setDifficulty}
+              noteContent={note?.content || ""}
+              onSectionsChange={setSelectedSections}
+              onValidSectionsChange={setHasValidSections}
             />
           ) : (
             <div className="space-y-6">
@@ -349,6 +380,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
             handleNewTest();
           }}
           questionTypes={questionTypes}
+          hasValidSections={hasValidSections}
         />
       </div>
 

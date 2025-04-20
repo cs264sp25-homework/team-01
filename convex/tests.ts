@@ -19,6 +19,7 @@ export const create = mutation({
       numQuestions: v.number(),
       types: v.array(v.string()),
       difficulty: v.string(),
+      sections: v.array(v.string()),
     }),
   },
   handler: async (ctx, args) => {

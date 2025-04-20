@@ -31,4 +31,20 @@ export interface GradingProgress {
 export interface ShortAnswerGrade {
   score: number;
   feedback: string;
+}
+
+export interface NoteNode {
+  type: string;
+  children: Array<{
+    text: string;
+    bold?: boolean;
+    fontSize?: string;
+    underline?: boolean;
+    italic?: boolean;
+  }>;
+  id?: string;
+  indent?: number;
+  listStyleType?: string;
+  listStart?: number;
+  align?: string;
 } 

@@ -2,6 +2,7 @@ import { Slider } from "@/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
 import { QuestionTypes } from "./test-generator-types";
+import { useState, useEffect } from "react";
 
 interface TestGeneratorOptionsProps {
   numQuestions: number;
@@ -10,6 +11,9 @@ interface TestGeneratorOptionsProps {
   onQuestionTypesChange: (types: QuestionTypes) => void;
   difficulty: string;
   onDifficultyChange: (value: string) => void;
+  noteContent: string;
+  onSectionsChange: (sections: string[]) => void;
+  onValidSectionsChange: (isValid: boolean) => void;
 }
 
 export function TestGeneratorOptions({
@@ -19,7 +23,51 @@ export function TestGeneratorOptions({
   onQuestionTypesChange,
   difficulty,
   onDifficultyChange,
+  noteContent,
+  onSectionsChange,
+  onValidSectionsChange,
 }: TestGeneratorOptionsProps) {
+  const [sections, setSections] = useState<string[]>([]);
+  const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    // Parse note content to extract sections
+    try {
+      const parsedContent = JSON.parse(noteContent);
+      const extractedSections = parsedContent
+        .filter((node: NoteNode) => node.type && node.type.startsWith('h'))
+        .map((node: NoteNode) => {
+          const text = node.children?.map((child) => child.text).join('') || '';
+          return text.trim();
+        })
+        .filter(Boolean);
+      
+      setSections(extractedSections);
+      // Initialize all sections as selected
+      const initialSelection = extractedSections.reduce((acc: Record<string, boolean>, section: string) => {
+        acc[section] = true;
+        return acc;
+      }, {});
+      setSelectedSections(initialSelection);
+      onSectionsChange(extractedSections);
+      onValidSectionsChange(extractedSections.length > 0);
+    } catch (error) {
+      console.error('Error parsing note content:', error);
+      onValidSectionsChange(false);
+    }
+  }, [noteContent]);
+
+  const handleSectionToggle = (section: string) => {
+    const newSelection = {
+      ...selectedSections,
+      [section]: !selectedSections[section]
+    };
+    setSelectedSections(newSelection);
+    const selectedSectionsList = Object.keys(newSelection).filter(key => newSelection[key]);
+    onSectionsChange(selectedSectionsList);
+    onValidSectionsChange(selectedSectionsList.length > 0);
+  };
+
   return (
     <div className="space-y-4 text-left">
       <div>
@@ -109,6 +157,29 @@ export function TestGeneratorOptions({
           </div>
         </RadioGroup>
       </div>
+
+      {sections.length > 0 && (
+        <div>
+          <label className="text-sm font-medium block text-left">Sections to Include</label>
+          <div className="mt-2 space-y-2">
+            {sections.map((section) => (
+              <div key={section} className="flex items-center space-x-2">
+                <Checkbox
+                  id={section}
+                  checked={selectedSections[section]}
+                  onCheckedChange={() => handleSectionToggle(section)}
+                />
+                <label htmlFor={section} className="text-sm text-left">
+                  {section}
+                </label>
+              </div>
+            ))}
+          </div>
+          {Object.values(selectedSections).every(value => !value) && (
+            <p className="text-sm text-red-500 mt-2">Please select at least one section to generate a test.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 } 

@@ -39,6 +39,7 @@ export const generateTest = action({
       numQuestions: v.number(),
       types: v.array(v.string()),
       difficulty: v.string(),
+      sections: v.array(v.string()),
     }),
   },
   handler: async (ctx, args): Promise<TestContent> => {
@@ -81,6 +82,7 @@ IMPORTANT:
 - Only generate questions of the types specified in the types array. Do not generate any other types of questions.
 - The question type must exactly match one of the provided types (mcq, shortAnswer, trueFalse, or fillInBlank).
 - If a type is not in the provided list, do not generate questions of that type.
+- Only generate questions from the following sections: ${args.options.sections.join(", ")}.
       
 Additionally, for each question, include a "source" field that contains a direct quote from the notes (10-30 words) that the question is based on. This will help users locate where the information came from.
       
