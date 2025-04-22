@@ -882,9 +882,10 @@ if (typeof window !== 'undefined') {
     // Strategy 1: Find the element with current selection
     const selection = window.getSelection();
     let targetElement = null;
+    let range = null;
     
     if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
+      range = selection.getRangeAt(0);
       targetElement = range.endContainer.parentElement;
     }
     
@@ -930,13 +931,24 @@ if (typeof window !== 'undefined') {
     ghostTextEl.style.pointerEvents = 'none';
     ghostTextEl.style.display = 'inline-block';
     
-    // Insert the ghost text element
+    // Insert the ghost text element at the cursor position
     try {
-      // Try to insert after the target element
-      if (targetElement.parentNode) {
+      if (range && selection) {
+        // Clone the range to avoid modifying the user's selection
+        const ghostRange = range.cloneRange();
+        
+        // Insert at the cursor position instead of after the element
+        ghostRange.collapse(false); // Collapse to end
+        ghostRange.insertNode(ghostTextEl);
+        
+        // Keep the original selection
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else if (targetElement.parentNode) {
+        // Fallback: insert after the target element
         targetElement.parentNode.insertBefore(ghostTextEl, targetElement.nextSibling);
       } else {
-        // If no parent node, try to append to the target directly
+        // Final fallback: append to the target
         targetElement.appendChild(ghostTextEl);
       }
       
