@@ -211,6 +211,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   const deleteMessagesAfterMutation = useMutation(api.chat.deleteMessagesAfter);
   const updateMessageMutation = useMutation(api.chat.updateMessage);
   const clearChatHistoryMutation = useMutation(api.chat.clearChatHistory);
+  const storeMessageMutation = useMutation(api.chat.storeMessage);
 
   // Move the function outside the component or use useCallback
   const getDefaultWelcomeMessage = useCallback((): Message => ({
@@ -267,6 +268,19 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
+
+    // If this is the first message and we have a welcome message, store it in the database
+    if (messages.length === 1 && messages[0].id === "welcome") {
+      try {
+        await storeMessageMutation({
+          content: messages[0].content,
+          sender: "ai",
+          noteId: noteId,
+        });
+      } catch (error) {
+        console.error("Failed to store welcome message:", error);
+      }
+    }
 
     // Add user message
     const userMessage: Message = {
