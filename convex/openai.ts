@@ -260,7 +260,7 @@ Rules:
            content: `Please complete the following text naturally. Don't include any explanation, just provide the completion.
 
 
-Text to complete: "${args.prompt}"`
+Text to complete: ${args.prompt}`
          },
        ],
        temperature: 0.7,
