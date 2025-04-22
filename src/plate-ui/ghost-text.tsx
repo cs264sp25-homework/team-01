@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { useElement } from '@udecode/plate/react';
+import React, { useEffect, useRef } from 'react';
+import { useElement, useEditorRef } from '@udecode/plate/react';
+import { ReactEditor } from 'slate-react';
 
 // Add a global function to test ghost text rendering directly
 if (typeof window !== 'undefined') {
@@ -64,6 +65,9 @@ export const GhostText = () => {
 };
 
 export function GhostTextContent() {
+  const editor = useEditorRef();
+  const ghostTextRef = useRef<HTMLSpanElement>(null);
+  
   // Get suggestion text from global state
   const getSuggestionText = () => {
     if (typeof window !== 'undefined') {
@@ -75,10 +79,45 @@ export function GhostTextContent() {
   
   const suggestionText = getSuggestionText();
   
+  // Position the ghost text at the cursor position when it's mounted and when the text changes
+  useEffect(() => {
+    if (!ghostTextRef.current || !suggestionText || !editor?.selection) return;
+
+    try {
+      // Try to find the DOM node for the current selection
+      const domSelection = window.getSelection();
+      if (domSelection && domSelection.rangeCount > 0) {
+        const range = domSelection.getRangeAt(0);
+        
+        // Position ghost text absolutely at cursor position
+        const rect = range.getBoundingClientRect();
+        
+        // Get editor container to calculate relative position
+        const editorEl = document.querySelector('[data-slate-editor="true"]');
+        const editorRect = editorEl?.getBoundingClientRect();
+        
+        if (rect && editorRect && ghostTextRef.current) {
+          // Calculate position relative to editor
+          const top = rect.top - editorRect.top; 
+          const left = rect.left - editorRect.left;
+          
+          // Set ghost text position
+          ghostTextRef.current.style.position = 'absolute';
+          ghostTextRef.current.style.top = `${top}px`;
+          ghostTextRef.current.style.left = `${left}px`;
+          ghostTextRef.current.style.zIndex = '999';
+        }
+      }
+    } catch (e) {
+      console.error('[GhostText] Error positioning ghost text:', e);
+    }
+  }, [editor, suggestionText]);
+  
   if (!suggestionText) return null;
 
   return (
     <span
+      ref={ghostTextRef}
       className="ghost-text-content pointer-events-none max-sm:hidden"
       contentEditable={false}
       style={{
