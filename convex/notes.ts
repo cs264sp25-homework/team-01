@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -90,7 +90,53 @@ export const create = mutation({
   },
 });
 
-// Update an existing note
+// Update lastEmbeddedAt timestamp
+export const updateLastEmbedded = internalMutation({
+  args: {
+    noteId: v.id("notes"),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.noteId, {
+      lastEmbeddedAt: args.timestamp,
+    });
+  },
+});
+
+// Force embed a note
+export const forceEmbed = mutation({
+  args: {
+    id: v.id("notes"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.tokenIdentifier.split("|")[1];
+    const note = await ctx.db.get(args.id);
+    
+    if (!note) {
+      throw new Error("Note not found");
+    }
+    
+    if (note.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Force process the content
+    await ctx.runMutation(internal.embeddings.debouncedEmbedding.trackContentChange, {
+      noteId: args.id,
+      content: note.content,
+      forceProcess: true,
+    });
+    
+    return args.id;
+  },
+});
+
+// Modify the update mutation to use debounced embedding
 export const update = mutation({
   args: {
     id: v.id("notes"),
@@ -104,7 +150,6 @@ export const update = mutation({
     }
 
     const userId = identity.tokenIdentifier.split("|")[1];
-    
     const existingNote = await ctx.db.get(args.id);
     
     if (!existingNote) {
@@ -122,16 +167,11 @@ export const update = mutation({
       content: args.content,
       updatedAt: now,
     });
-    
-    // Process updated note to create/update chunks
-    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
+
+    // Use debounced embedding system
+    await ctx.runMutation(internal.embeddings.debouncedEmbedding.trackContentChange, {
       noteId: args.id,
       content: args.content,
-    });
-    
-    // Process the note to create embeddings
-    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
-      noteId: args.id,
     });
     
     return args.id;

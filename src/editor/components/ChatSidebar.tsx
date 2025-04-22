@@ -213,12 +213,15 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   const clearChatHistoryMutation = useMutation(api.chat.clearChatHistory);
 
   // Move the function outside the component or use useCallback
-  const getDefaultWelcomeMessage = useCallback((): Message => ({
-    id: "welcome",
-    content: `Hi! I'm your AI assistant. I have access to your document${note?.title ? ` "${note.title}"` : ""} and can help you with questions about its content. How can I assist you?`,
-    sender: "ai",
-    timestamp: new Date(),
-  }), [note?.title]);
+  const getDefaultWelcomeMessage = useCallback(
+    (): Message => ({
+      id: "welcome",
+      content: `Hi! I'm your AI assistant. I have access to your document${note?.title ? ` "${note.title}"` : ""} and can help you with questions about its content. How can I assist you?`,
+      sender: "ai",
+      timestamp: new Date(),
+    }),
+    [note?.title]
+  );
 
   // Initialize messages with chat history when it loads
   useEffect(() => {
@@ -458,7 +461,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
     try {
       // Clear chat history in the database
       await clearChatHistoryMutation({ noteId });
-      
+
       // Reset UI to show only the welcome message
       setMessages([getDefaultWelcomeMessage()]);
     } catch (error) {
@@ -480,9 +483,9 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleClearChatHistory}
             className="text-xs"
           >

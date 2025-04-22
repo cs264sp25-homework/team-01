@@ -1,4 +1,3 @@
-
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -13,23 +12,25 @@ import {
   SearchIcon,
   ListFilterIcon,
   NetworkIcon,
-  FileDownIcon
+  FileDownIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   SearchBar,
   createSearchHighlightPlugin,
 } from "@/editor/components/search-bar";
-import { jsPDF } from 'jspdf';
-import { 
+import { jsPDF } from "jspdf";
+import {
   Dialog,
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/plate-ui/dialog';
-import { Input } from '@/plate-ui/input';
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/plate-ui/dialog";
+import { Input } from "@/plate-ui/input";
+import { EditorToolbar } from "./editor-toolbar";
 
 // A simple debounce helper
 function debounce(func: Function, wait: number) {
@@ -45,10 +46,12 @@ function debounce(func: Function, wait: number) {
 }
 
 interface PlateEditorProps {
-  initialContent?: string;
-  onUpdate?: (content: string, isManualSave?: boolean) => void;
+  initialContent: string;
+  onUpdate: (content: string, isManualSave?: boolean) => Promise<boolean>;
   autoSave?: boolean;
   isSaving?: boolean;
+  onForceEmbed?: () => Promise<void>;
+  lastEmbeddedAt?: number;
 }
 
 export function PlateEditor({
@@ -56,6 +59,8 @@ export function PlateEditor({
   onUpdate,
   autoSave = true,
   isSaving = false,
+  onForceEmbed,
+  lastEmbeddedAt,
 }: PlateEditorProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -65,13 +70,14 @@ export function PlateEditor({
   const [isExporting, setIsExporting] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [pdfFileName, setPdfFileName] = useState("notes");
+  const [isEmbedding, setIsEmbedding] = useState(false);
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
 
   // Parse initialContent for the editor
   const parsedInitialContent = useMemo(() => {
     if (!initialContent) return [{ type: "p", children: [{ text: "" }] }];
-    
+
     try {
       const parsed = JSON.parse(initialContent);
       return Array.isArray(parsed) ? parsed : [parsed];
@@ -95,9 +101,9 @@ export function PlateEditor({
   useEffect(() => {
     if (editor) {
       (window as any).__PLATE_EDITOR__ = editor;
-      
+
       // Use the store function from copilot-plugin if available
-      if (typeof (window as any).__STORE_EDITOR_REF__ === 'function') {
+      if (typeof (window as any).__STORE_EDITOR_REF__ === "function") {
         (window as any).__STORE_EDITOR_REF__(editor);
       }
     }
@@ -128,28 +134,28 @@ export function PlateEditor({
     setIsDirty(true);
     if (autoSave) debouncedSave();
   }, [autoSave, debouncedSave]);
-  
+
   // Expose handleEditorChange globally for plugins to access
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).__PLATE_EDITOR_HANDLE_CHANGE__ = handleEditorChange;
-      
+
       // Also store the plate instance if possible
-      if (typeof (window as any).__PLATE_INSTANCE__ === 'undefined') {
+      if (typeof (window as any).__PLATE_INSTANCE__ === "undefined") {
         setTimeout(() => {
           try {
             // Look for the Plate component in React fibers
-            document.querySelectorAll('[data-slate-plugin-plate]');
+            document.querySelectorAll("[data-slate-plugin-plate]");
           } catch (e) {
             // Error finding Plate instance
           }
         }, 500);
       }
     }
-    
+
     return () => {
       // Clean up global reference when component unmounts
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         delete (window as any).__PLATE_EDITOR_HANDLE_CHANGE__;
       }
     };
@@ -177,7 +183,7 @@ export function PlateEditor({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
-  
+
   // Listen for external changes from plugins (like copilot)
   useEffect(() => {
     const handleExternalChange = () => {
@@ -185,14 +191,14 @@ export function PlateEditor({
       setIsDirty(true);
       if (autoSave) debouncedSave();
     };
-    
+
     // Direct save content trigger from plugins
     const handleSaveContent = (e: Event) => {
       const customEvent = e as CustomEvent;
       const isManual = customEvent.detail?.manual === true;
       saveContent(isManual);
     };
-    
+
     // Force save with specific content
     const handleForceSave = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -203,18 +209,24 @@ export function PlateEditor({
         setIsDirty(false);
       }
     };
-    
+
     // Listen for our custom events
-    document.addEventListener('plate-editor-change', handleExternalChange);
-    document.addEventListener('editor-content-changed', handleExternalChange);
-    document.addEventListener('plate-editor-save-content', handleSaveContent);
-    document.addEventListener('plate-editor-force-save', handleForceSave);
-    
+    document.addEventListener("plate-editor-change", handleExternalChange);
+    document.addEventListener("editor-content-changed", handleExternalChange);
+    document.addEventListener("plate-editor-save-content", handleSaveContent);
+    document.addEventListener("plate-editor-force-save", handleForceSave);
+
     return () => {
-      document.removeEventListener('plate-editor-change', handleExternalChange);
-      document.removeEventListener('editor-content-changed', handleExternalChange);
-      document.removeEventListener('plate-editor-save-content', handleSaveContent);
-      document.removeEventListener('plate-editor-force-save', handleForceSave);
+      document.removeEventListener("plate-editor-change", handleExternalChange);
+      document.removeEventListener(
+        "editor-content-changed",
+        handleExternalChange
+      );
+      document.removeEventListener(
+        "plate-editor-save-content",
+        handleSaveContent
+      );
+      document.removeEventListener("plate-editor-force-save", handleForceSave);
     };
   }, [autoSave, debouncedSave, saveContent, onUpdate]);
 
@@ -289,15 +301,18 @@ export function PlateEditor({
       setIsExporting(true);
       setShowExportDialog(false);
       toast.loading("Exporting to PDF...", { id: "export-pdf" });
-      
+
       // Debug: Log the editor structure to console
-      console.log("Editor structure:", JSON.stringify(editor.children, null, 2));
-      
+      console.log(
+        "Editor structure:",
+        JSON.stringify(editor.children, null, 2)
+      );
+
       // Create new PDF document
       const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
       });
 
       // Set up initial position and line height
@@ -305,26 +320,26 @@ export function PlateEditor({
       let yPos = margin;
       const lineHeight = 7;
       const pageHeight = doc.internal.pageSize.height;
-      const maxWidth = doc.internal.pageSize.width - (margin * 2);
+      const maxWidth = doc.internal.pageSize.width - margin * 2;
       let listCounters: { [key: number]: number } = {};
 
       // Convert color from any format to RGB
       const parseColor = (color: string) => {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = 1;
         canvas.height = 1;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) return { r: 0, g: 0, b: 0 };
-        
+
         ctx.fillStyle = color;
         const rgb = ctx.fillStyle;
         const match = rgb.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-        
+
         if (match) {
           return {
             r: parseInt(match[1], 16),
             g: parseInt(match[2], 16),
-            b: parseInt(match[3], 16)
+            b: parseInt(match[3], 16),
           };
         }
         return { r: 0, g: 0, b: 0 };
@@ -332,14 +347,17 @@ export function PlateEditor({
 
       // Function to process text nodes with styling
       const processTextNode = (node: any) => {
-        let text = node.text || '';
+        let text = node.text || "";
         const decorations: ((x: number, width: number) => void)[] = [];
-        
+
         // Handle text styling
         const fontStyle = [];
-        if (node.bold) fontStyle.push('bold');
-        if (node.italic) fontStyle.push('italic');
-        doc.setFont('Helvetica', fontStyle.length ? fontStyle.join('-') : 'normal');
+        if (node.bold) fontStyle.push("bold");
+        if (node.italic) fontStyle.push("italic");
+        doc.setFont(
+          "Helvetica",
+          fontStyle.length ? fontStyle.join("-") : "normal"
+        );
 
         // Handle text color
         if (node.color) {
@@ -347,7 +365,7 @@ export function PlateEditor({
             const { r, g, b } = parseColor(node.color);
             doc.setTextColor(r, g, b);
           } catch (e) {
-            console.warn('Color parsing failed:', e);
+            console.warn("Color parsing failed:", e);
             doc.setTextColor(0, 0, 0);
           }
         }
@@ -378,48 +396,54 @@ export function PlateEditor({
       const processNode = (node: any, level: number = 0) => {
         // Debug: Log node type and properties
         console.log("Processing node:", node.type, node);
-        
+
         // Reset styles for new block
-        doc.setFont('Helvetica', 'normal');
+        doc.setFont("Helvetica", "normal");
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
 
-        let indent = margin + (level * 10);
-        
+        let indent = margin + level * 10;
+
         // Handle different node types depending on Plate's structure
-        if (node.type === 'p' && node.indent && node.indent > 0) {
+        if (node.type === "p" && node.indent && node.indent > 0) {
           // This is likely a list item from IndentListPlugin
-          console.log("Found list item with indent:", node.indent, "listStyleType:", node.listStyleType);
-          
+          console.log(
+            "Found list item with indent:",
+            node.indent,
+            "listStyleType:",
+            node.listStyleType
+          );
+
           // Determine if it's a numbered list or bullet list
-          const isNumbered = node.listStyleType === 'decimal' || node.listStyleType === 'number';
-          
+          const isNumbered =
+            node.listStyleType === "decimal" || node.listStyleType === "number";
+
           // Set indent based on the indent level
-          indent = margin + (node.indent * 10);
-          
+          indent = margin + node.indent * 10;
+
           // Generate appropriate marker
-          let marker = '';
+          let marker = "";
           if (isNumbered) {
             // For numbered lists
             listCounters[node.indent] = (listCounters[node.indent] || 0) + 1;
             marker = `${listCounters[node.indent]}. `;
           } else {
             // For bullet points
-            marker = '• ';
+            marker = "• ";
           }
-          
+
           // Draw the marker
           doc.text(marker, indent - 10, yPos);
           indent += 5; // Add space after marker
         }
-        
+
         // Continue with normal node processing
         if (node.children) {
-          let currentText = '';
+          let currentText = "";
           let currentDecorations: Function[] = [];
 
           node.children.forEach((child: any) => {
-            if (typeof child === 'string') {
+            if (typeof child === "string") {
               currentText += child;
             } else if (child.type) {
               // Process structured child node recursively
@@ -433,20 +457,25 @@ export function PlateEditor({
                     yPos = margin;
                   }
                   doc.text(line, indent, yPos);
-                  currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+                  currentDecorations.forEach((decoration) =>
+                    decoration(indent, doc.getTextWidth(line))
+                  );
                   yPos += lineHeight;
                 });
-                currentText = '';
+                currentText = "";
                 currentDecorations = [];
               }
-              
+
               // Process child node
               processNode(child, level + 1);
             } else {
               // Process text node with styling
               const processed = processTextNode(child);
               currentText += processed.text;
-              currentDecorations = [...currentDecorations, ...processed.decorations];
+              currentDecorations = [
+                ...currentDecorations,
+                ...processed.decorations,
+              ];
             }
           });
 
@@ -460,20 +489,22 @@ export function PlateEditor({
                 yPos = margin;
               }
               doc.text(line, indent, yPos);
-              currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+              currentDecorations.forEach((decoration) =>
+                decoration(indent, doc.getTextWidth(line))
+              );
               yPos += lineHeight;
             });
           }
         }
 
         // Add spacing after blocks
-        if (node.type === 'p') {
+        if (node.type === "p") {
           yPos += lineHeight / 2;
         }
       };
 
       // Process the document
-      editor.children.forEach(node => processNode(node));
+      editor.children.forEach((node) => processNode(node));
 
       // Save the PDF with the custom name
       doc.save(`${pdfFileName}.pdf`);
@@ -489,83 +520,40 @@ export function PlateEditor({
     }
   }, [editor, pdfFileName]);
 
+  const handleForceEmbed = async () => {
+    if (!onForceEmbed) return;
+
+    try {
+      setIsEmbedding(true);
+      await onForceEmbed();
+      toast.success("Embeddings updated successfully!");
+    } catch (error) {
+      console.error("Failed to update embeddings:", error);
+      toast.error("Failed to update embeddings");
+    } finally {
+      setIsEmbedding(false);
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full">
         {onUpdate && (
-          <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-white border-b">
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => saveContent(true)}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={!isDirty || isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon className="w-4 h-4" />
-                    Save
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={organizeNotes}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={isOrganizing}
-              >
-                {isOrganizing ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Organizing...
-                  </>
-                ) : (
-                  <>
-                    <ListFilterIcon className="w-4 h-4" />
-                    Organize Notes
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={generateConceptMap}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <NetworkIcon className="w-4 h-4" />
-                Generate Concept Map
-              </Button>
-              <Button
-                onClick={handleExportButtonClick}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={isExporting}
-              >
-                {isExporting ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <FileDownIcon className="w-4 h-4" />
-                    Export PDF
-                  </>
-                )}
-              </Button>
-            </div>
-            {lastSavedAt && (
-              <span className="text-sm text-gray-500">
-                {isAutoSaving
-                  ? "Auto-saving..."
-                  : `Last saved: ${lastSavedAt.toLocaleTimeString()}`}
-              </span>
-            )}
-          </div>
+          <EditorToolbar
+            onSave={() => saveContent(true)}
+            onOrganize={organizeNotes}
+            onGenerateConceptMap={generateConceptMap}
+            onExport={handleExportButtonClick}
+            onForceEmbed={handleForceEmbed}
+            isDirty={isDirty}
+            isSaving={isSaving}
+            isOrganizing={isOrganizing}
+            isExporting={isExporting}
+            isEmbedding={isEmbedding}
+            lastSavedAt={lastSavedAt}
+            lastEmbeddedAt={lastEmbeddedAt}
+            isAutoSaving={isAutoSaving}
+          />
         )}
         <Plate editor={editor} onChange={handleEditorChange}>
           <div className="relative">
@@ -624,4 +612,3 @@ export function PlateEditor({
     </DndProvider>
   );
 }
-

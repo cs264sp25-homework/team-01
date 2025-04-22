@@ -19,6 +19,24 @@ export function useNotes(noteId?: string) {
   const updateNote = useMutation(api.notes.update);
   const renameNote = useMutation(api.notes.rename);
   const deleteNote = useMutation(api.notes.remove);
+  const forceEmbed = useMutation(api.notes.forceEmbed);
+
+  // Handle force embed
+  const handleForceEmbed = async () => {
+    if (!note || !noteId) return false;
+    
+    try {
+      await forceEmbed({
+        id: noteId as Id<"notes">,
+      });
+      toast.success("Embeddings updated successfully!");
+      return true;
+    } catch (error) {
+      console.error("Failed to update embeddings:", error);
+      toast.error("Failed to update embeddings");
+      return false;
+    }
+  };
 
   // Update note content
   const handleUpdateNote = async (content: string, isManualSave = false) => {
@@ -88,6 +106,7 @@ export function useNotes(noteId?: string) {
     isContentSaving,
     handleUpdateNote,
     handleRename,
-    handleDelete
+    handleDelete,
+    handleForceEmbed,
   };
 }

@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as chunking from "../chunking.js";
 import type * as conceptMap from "../conceptMap.js";
+import type * as embeddings_debouncedEmbedding from "../embeddings/debouncedEmbedding.js";
 import type * as embeddings from "../embeddings.js";
 import type * as hello from "../hello.js";
 import type * as http from "../http.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   chunking: typeof chunking;
   conceptMap: typeof conceptMap;
+  "embeddings/debouncedEmbedding": typeof embeddings_debouncedEmbedding;
   embeddings: typeof embeddings;
   hello: typeof hello;
   http: typeof http;

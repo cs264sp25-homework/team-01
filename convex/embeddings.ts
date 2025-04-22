@@ -112,6 +112,7 @@ export const processNoteEmbeddings = internalAction({
     noteId: v.id("notes"),
   },
   handler: async (ctx, args): Promise<{ success: boolean; chunkCount: number }> => {
+
     try {
       // Get all chunks for the note
       const chunks: Array<{ _id: Id<"chunks">; content: string; noteId: Id<"notes">; index: number }> = 

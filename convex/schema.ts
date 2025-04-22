@@ -20,6 +20,7 @@ const schema = defineSchema({
     userId: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    lastEmbeddedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
   messages: defineTable({
     content: v.string(),
