@@ -9,7 +9,6 @@ import {
   XIcon,
   Check,
   BotMessageSquare,
-  Paperclip,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/ui/avatar";
 import { cn } from "@/shared/lib/utils";
@@ -525,14 +524,6 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       {/* Input Area - fixed at bottom */}
       <div className="flex-shrink-0 p-4 border-t bg-muted/20">
         <div className="relative flex items-end border rounded-lg border-input bg-background">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute w-8 h-8 left-4 bottom-3 hover:bg-accent"
-          >
-            <Paperclip className="w-5 h-5 text-muted-foreground" />
-          </Button>
           <Textarea
             ref={textareaRef}
             value={inputValue}
@@ -541,7 +532,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
             placeholder="Type a message..."
             className={cn(
               "w-full overflow-y-auto",
-              "pl-14 pr-14 py-5", // Space for icons
+              "px-14 py-5", // Removed pl-14 since we don't need space for the file upload button
               "focus-visible:ring-0",
               "border-0 focus-visible:ring-offset-0 rounded-lg",
               "min-h-[60px]",
