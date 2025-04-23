@@ -60,18 +60,7 @@ export const storeEmbedding = internalMutation({
   },
   handler: async (ctx, args) => {
     try {
-      // Check if embedding already exists for this chunk
-      const existingEmbeddings = await ctx.db
-        .query("embeddings")
-        .withIndex("by_chunkId", (q) => q.eq("chunkId", args.chunkId))
-        .collect();
-      
-      // Delete existing embeddings for this chunk
-      for (const embedding of existingEmbeddings) {
-        await ctx.db.delete(embedding._id);
-      }
-      
-      // Store new embedding
+      // Store new embedding directly
       const now = Date.now();
       await ctx.db.insert("embeddings", {
         chunkId: args.chunkId,
@@ -222,6 +211,26 @@ export const listEmbeddings = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("embeddings").collect();
+  },
+});
+
+// Get all embeddings for a specific note
+export const getEmbeddingsForNote = internalQuery({
+  args: { noteId: v.id("notes") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("embeddings")
+      .withIndex("by_noteId", (q) => q.eq("noteId", args.noteId))
+      .collect();
+  },
+});
+
+// Delete a specific embedding
+export const deleteEmbedding = internalMutation({
+  args: { embeddingId: v.id("embeddings") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.embeddingId);
+    return { success: true };
   },
 });
 

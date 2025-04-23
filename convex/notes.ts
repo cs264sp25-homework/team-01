@@ -417,6 +417,13 @@ export const regenerateAllEmbeddings = action({
       for (const note of notes) {
         console.log(`Regenerating chunks and embeddings for note: ${note.title} (${note._id})`);
         
+        // Delete existing embeddings for this note first
+        const existingEmbeddings = await ctx.runQuery(internal.embeddings.getEmbeddingsForNote, { noteId: note._id });
+        console.log(`Deleting ${existingEmbeddings.length} existing embeddings for note ${note._id}`);
+        for (const embedding of existingEmbeddings) {
+          await ctx.runMutation(internal.embeddings.deleteEmbedding, { embeddingId: embedding._id });
+        }
+        
         // Process the note to create/update chunks
         await ctx.runMutation(internal.chunking.processNoteChunks, {
           noteId: note._id,

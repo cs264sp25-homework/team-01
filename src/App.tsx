@@ -143,7 +143,7 @@ function MainContent() {
     setIsRenameModalOpen(true);
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-3 mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -163,7 +163,7 @@ function MainContent() {
                 <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                 </svg>
-              </div>
+        </div>
               <input
                 type="text"
                 placeholder="Search in notes..."
@@ -181,14 +181,14 @@ function MainContent() {
                   </svg>
                 </button>
               )}
-            </div>
+      </div>
             
             {/* Semantic search toggle */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
                 Semantic search
                 {showSemanticLoadingIndicator && 
-                  <span className="ml-2 text-xs animate-pulse text-blue-500">
+                  <span className="ml-2 text-xs text-blue-500 animate-pulse">
                     (loading...)
                   </span>
                 }
@@ -227,7 +227,7 @@ function MainContent() {
                   Improve Search
                 </button>
               )}
-            </div>
+        </div>
             
             <button
               onClick={() => setIsModalOpen(true)}
@@ -264,16 +264,16 @@ function MainContent() {
                 className="relative p-6 transition-shadow bg-white border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:shadow-md group"
               >
                 <div className="absolute transition-opacity opacity-0 top-2 right-2 group-hover:opacity-100">
-                  <button
+        <button
                     onClick={(e) => openRenameModal(note, e)}
                     className="p-1.5 text-gray-500 hover:text-gray-700"
                     title="Rename note"
-                  >
+        >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
-                  </button>
-                  <button
+        </button>
+        <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteNote(note);
@@ -284,8 +284,8 @@ function MainContent() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                  </button>
-                </div>
+        </button>
+      </div>
                 <h3 className="mb-2 text-lg font-medium text-gray-900">{note.title}</h3>
                 {searchQuery && note.contentPreview && !note.title.toLowerCase().includes(searchQuery.toLowerCase()) && (
                   <p className="mb-2 text-sm text-gray-600">
@@ -295,9 +295,9 @@ function MainContent() {
                 <p className="text-sm text-gray-500">
                   Last updated: {new Date(note.updatedAt).toLocaleString()}
                 </p>
-              </div>
+        </div>
             ))
-          )}
+      )}
         </div>
 
         <CreateNoteModal
@@ -347,7 +347,7 @@ function App() {
   return (
     <>
       <Toaster position="top-right" />
-      <Routes>
+    <Routes>
         {/* Root redirects */}
         <Route path="/" element={<Navigate to="/team-01" replace />} />
         
@@ -367,7 +367,7 @@ function App() {
         
         {/* Catch-all route for any unmatched paths */}
         <Route path="*" element={<Navigate to="/team-01" replace />} />
-      </Routes>
+    </Routes>
     </>
   );
 }
