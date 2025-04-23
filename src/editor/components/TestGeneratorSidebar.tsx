@@ -80,7 +80,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const savedTests = useQuery(api.tests.getByNote, { noteId }) as SavedTest[] | null;
   const note = useQuery(api.notes.get, { id: noteId });
 
-  // We'll use the existing OpenAI action pattern from your codebase
+  // Use the existing OpenAI action pattern from codebase
   const getSavedTestAction = useAction(api.testGenerator.getSavedTest);
   
   // Mutations for test management
@@ -88,7 +88,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
   const updateTestMutation = useMutation(api.tests.update);
   const removeTestMutation = useMutation(api.tests.remove);
 
-  // Add the action hooks
+  // Action hooks
   const generateTestAction = useAction(api.testGenerator.generateTest);
   const gradeShortAnswerAction = useAction(api.testGenerator.gradeShortAnswer);
 

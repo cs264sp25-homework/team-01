@@ -69,57 +69,57 @@ export const generateTest = action({
     try {
       const systemPrompt = `You are a test question generator. Your task is to create a test based on the provided notes.
             
-Generate ${args.options.numQuestions} questions using ONLY the following question types: ${args.options.types.join(", ")}.
-The difficulty level should be: ${args.options.difficulty}.
-      
-For each question:
-1. If it's a multiple-choice question (mcq), provide 4 options and indicate the correct answer.
-2. If it's a short answer question (shortAnswer), provide the expected answer.
-3. If it's a true/false question (trueFalse), indicate whether the statement is true or false.
-4. If it's a fill-in-the-blank question (fillInBlank), provide a sentence with a blank and the word that should fill the blank.
-      
-IMPORTANT: 
-- Only generate questions of the types specified in the types array. Do not generate any other types of questions.
-- The question type must exactly match one of the provided types (mcq, shortAnswer, trueFalse, or fillInBlank).
-- If a type is not in the provided list, do not generate questions of that type.
-- Only generate questions from the following sections: ${args.options.sections.join(", ")}.
-      
-Additionally, for each question, include a "source" field that contains a direct quote from the notes (10-30 words) that the question is based on. This will help users locate where the information came from.
-      
-Return your response as a JSON object with the following structure:
-{
-  "questions": [
-    {
-      "type": "mcq",
-      "question": "Question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "answer": "Option A",
-      "source": "Direct quote from notes that contains the answer"
-    },
-    {
-      "type": "shortAnswer",
-      "question": "Question text",
-      "answer": "Expected answer",
-      "source": "Direct quote from notes that contains the answer"
-    },
-    {
-      "type": "trueFalse",
-      "question": "Statement",
-      "answer": "True" or "False",
-      "source": "Direct quote from notes that contains the answer"
-    },
-    {
-      "type": "fillInBlank",
-      "question": "Sentence with _____ to fill in.",
-      "answer": "word",
-      "source": "Direct quote from notes that contains the answer"
-    }
-  ]
-}
-      
-Ensure all questions are directly based on the content of the notes.
-Do not include any explanations or additional text outside the JSON structure.
-IMPORTANT: Return only raw JSON with no markdown formatting. Do not wrap your output in triple-backticks.`;
+      Generate ${args.options.numQuestions} questions using ONLY the following question types: ${args.options.types.join(", ")}.
+      The difficulty level should be: ${args.options.difficulty}.
+            
+      For each question:
+      1. If it's a multiple-choice question (mcq), provide 4 options and indicate the correct answer.
+      2. If it's a short answer question (shortAnswer), provide the expected answer.
+      3. If it's a true/false question (trueFalse), indicate whether the statement is true or false.
+      4. If it's a fill-in-the-blank question (fillInBlank), provide a sentence with a blank and the word that should fill the blank.
+            
+      IMPORTANT: 
+      - Only generate questions of the types specified in the types array. Do not generate any other types of questions.
+      - The question type must exactly match one of the provided types (mcq, shortAnswer, trueFalse, or fillInBlank).
+      - If a type is not in the provided list, do not generate questions of that type.
+      - Only generate questions from the following sections: ${args.options.sections.join(", ")}.
+            
+      Additionally, for each question, include a "source" field that contains a direct quote from the notes (10-30 words) that the question is based on. This will help users locate where the information came from.
+            
+      Return your response as a JSON object with the following structure:
+      {
+        "questions": [
+          {
+            "type": "mcq",
+            "question": "Question text",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "answer": "Option A",
+            "source": "Direct quote from notes that contains the answer"
+          },
+          {
+            "type": "shortAnswer",
+            "question": "Question text",
+            "answer": "Expected answer",
+            "source": "Direct quote from notes that contains the answer"
+          },
+          {
+            "type": "trueFalse",
+            "question": "Statement",
+            "answer": "True" or "False",
+            "source": "Direct quote from notes that contains the answer"
+          },
+          {
+            "type": "fillInBlank",
+            "question": "Sentence with _____ to fill in.",
+            "answer": "word",
+            "source": "Direct quote from notes that contains the answer"
+          }
+        ]
+      }
+            
+      Ensure all questions are directly based on the content of the notes.
+      Do not include any explanations or additional text outside the JSON structure.
+      IMPORTANT: Return only raw JSON with no markdown formatting. Do not wrap your output in triple-backticks.`;
 
       const userPrompt = `Generate test questions based on the following notes:
       
@@ -216,7 +216,7 @@ export const gradeShortAnswer = action({
     }
 
     try {
-      const systemPrompt = `You are an expert grader for short answer questions. Your task is to evaluate how well a my answer matches the expected answer, considering both content and key concepts.
+      const systemPrompt = `You are an expert grader for short answer questions. Your task is to evaluate how well my answer matches the expected answer, considering both content and key concepts.
 
       For each answer:
       1. Score it as either 1 (correct) or 0 (incorrect) based on whether the key concepts and main ideas match the expected answer
@@ -227,7 +227,7 @@ export const gradeShortAnswer = action({
       Return your response as a JSON object with the following structure:
       {
         "score": 1 or 0,
-        "feedback": "Detailed feedback about the answer"
+        "feedback": "Feedback about the answer"
       }
 
       IMPORTANT: Return only raw JSON with no markdown formatting. Do not wrap your output in triple-backticks.`;
