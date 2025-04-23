@@ -8,14 +8,6 @@ import { Id } from "./_generated/dataModel";
 // Configuration
 const EMBEDDING_MODEL = "text-embedding-3-small";
 
-// Interface for embedding document type
-interface EmbeddingDoc {
-  chunkId: Id<"chunks">;
-  noteId: Id<"notes">;
-  vector: number[];
-  createdAt: number;
-}
-
 // Generate embeddings for a chunk using OpenAI
 export const generateEmbedding = internalAction({
   args: {
@@ -68,18 +60,7 @@ export const storeEmbedding = internalMutation({
   },
   handler: async (ctx, args) => {
     try {
-      // Check if embedding already exists for this chunk
-      const existingEmbeddings = await ctx.db
-        .query("embeddings")
-        .withIndex("by_chunkId", (q) => q.eq("chunkId", args.chunkId))
-        .collect();
-      
-      // Delete existing embeddings for this chunk
-      for (const embedding of existingEmbeddings) {
-        await ctx.db.delete(embedding._id);
-      }
-      
-      // Store new embedding
+      // Store new embedding directly
       const now = Date.now();
       await ctx.db.insert("embeddings", {
         chunkId: args.chunkId,
@@ -161,6 +142,8 @@ export const searchSimilarContent = action({
 
       const openai = new OpenAI({ apiKey });
       
+      console.log(`Generating embedding for query: "${args.query}"`);
+      
       // Generate embedding for the query
       const response = await openai.embeddings.create({
         model: EMBEDDING_MODEL,
@@ -171,10 +154,15 @@ export const searchSimilarContent = action({
       const queryVector = response.data[0].embedding;
       
       // Get all embeddings
-      const embeddings: Array<EmbeddingDoc & { _id: Id<"embeddings"> }> = 
-        await ctx.runQuery(internal.embeddings.listEmbeddings);
+      const embeddings = await ctx.runQuery(internal.embeddings.listEmbeddings);
+      console.log(`Found ${embeddings.length} total embeddings to search through`);
       
-      // Calculate similarity scores
+      if (embeddings.length === 0) {
+        console.log("No embeddings found in database");
+        return [];
+      }
+      
+      // Calculate similarity scores for all embeddings
       const similarities = embeddings.map((embedding) => {
         const similarity = calculateCosineSimilarity(queryVector, embedding.vector);
         return {
@@ -188,7 +176,11 @@ export const searchSimilarContent = action({
       similarities.sort((a, b) => b.similarity - a.similarity);
       
       // Take top results
-      const topResults = similarities.slice(0, args.limit || 5);
+      const topLimit = args.limit || 10;
+      const topResults = similarities.slice(0, topLimit);
+      
+      console.log(`Top ${topResults.length} similarities:`, 
+        topResults.map(r => `${r.similarity.toFixed(3)} (${r.noteId})`).join(', '));
       
       // Get the actual chunk content for the top results
       const results = await Promise.all(
@@ -219,6 +211,26 @@ export const listEmbeddings = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("embeddings").collect();
+  },
+});
+
+// Get all embeddings for a specific note
+export const getEmbeddingsForNote = internalQuery({
+  args: { noteId: v.id("notes") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("embeddings")
+      .withIndex("by_noteId", (q) => q.eq("noteId", args.noteId))
+      .collect();
+  },
+});
+
+// Delete a specific embedding
+export const deleteEmbedding = internalMutation({
+  args: { embeddingId: v.id("embeddings") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.embeddingId);
+    return { success: true };
   },
 });
 

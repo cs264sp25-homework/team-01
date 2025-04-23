@@ -1,7 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
+import { api, internal } from "./_generated/api";
+import { ConvexError } from "convex/values";
 
 // Get all notes for the authenticated user
 export const list = query({
@@ -201,7 +202,10 @@ export const rename = mutation({
 
 // Search notes by title and content
 export const search = query({
-  args: { query: v.string() },
+  args: { 
+    query: v.string(),
+    semantic: v.optional(v.boolean())
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -211,6 +215,14 @@ export const search = query({
     const userId = identity.tokenIdentifier.split("|")[1];
     const searchTerm = args.query.toLowerCase();
     
+    // If semantic search is enabled, we can't directly use embeddings in a query
+    // The user will need to handle this in the UI by calling the semanticSearch action
+    if (args.semantic) {
+      // Return empty results to indicate semanticSearch action should be used
+      return [];
+    }
+    
+    // Regular text-based search
     // Get all notes for the user
     const notes = await ctx.db
       .query("notes")
@@ -275,6 +287,97 @@ export const search = query({
   },
 });
 
+// Semantic search using embeddings
+export const semanticSearch = action({
+  args: { 
+    query: v.string(),
+  },
+  handler: async (ctx, args): Promise<Array<{
+    _id: Id<"notes">;
+    title: string;
+    content: string;
+    userId: string;
+    createdAt: number;
+    updatedAt: number;
+    contentPreview?: string;
+    similarity?: number;
+  }>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    
+    const userId = identity.tokenIdentifier.split("|")[1];
+    console.log(`Performing semantic search for user ${userId} with query: "${args.query}"`);
+    
+    try {
+      // Get semantic search results from embeddings
+      const searchResults = await ctx.runAction(api.embeddings.searchSimilarContent, {
+        query: args.query,
+        limit: 15
+      });
+      
+      console.log(`Semantic search found ${searchResults.length} matching chunks`);
+      
+      if (searchResults.length === 0) {
+        console.log("No matching chunks found");
+        return [];
+      }
+      
+      // Get all notes for the user in one query
+      const allUserNotes = await ctx.runQuery(api.notes.list);
+      
+      // Create a map for quick lookup
+      const noteMap = new Map();
+      for (const note of allUserNotes) {
+        noteMap.set(note._id, note);
+      }
+      
+      // Group by note and take highest similarity score
+      const noteScores = new Map();
+      const noteContents = new Map();
+      
+      for (const result of searchResults) {
+        const currentScore = noteScores.get(result.noteId) || 0;
+        if (result.similarity > currentScore) {
+          noteScores.set(result.noteId, result.similarity);
+          noteContents.set(result.noteId, result.content);
+        }
+      }
+      
+      // Build results from the best matches
+      const results = [];
+      
+      for (const [noteId, similarity] of noteScores.entries()) {
+        const note = noteMap.get(noteId);
+        if (!note || note.userId !== userId) continue;
+        
+        const matchContent = noteContents.get(noteId);
+        
+        // Create a preview
+        let preview = matchContent.substring(0, 150);
+        if (matchContent.length > 150) preview += "...";
+        
+        results.push({
+          ...note,
+          contentPreview: preview,
+          similarity: similarity
+        });
+      }
+      
+      // Sort by similarity (highest first)
+      results.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+      
+      console.log(`Returned ${results.length} matching notes sorted by similarity`);
+      
+      return results;
+    } catch (error) {
+      console.error("Semantic search error:", error);
+      return [];
+    }
+  }
+});
+
 // Helper function to extract text from the Plate editor content structure
 function extractTextFromContent(content: any[]): string {
   if (!Array.isArray(content)) return "";
@@ -290,4 +393,56 @@ function extractTextFromContent(content: any[]): string {
     
     return "";
   }).join(" ");
-} 
+}
+
+// Reprocess all notes to regenerate chunks and embeddings
+export const regenerateAllEmbeddings = action({
+  args: {},
+  handler: async (ctx): Promise<{ success: boolean; count: number }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    
+    const userId = identity.tokenIdentifier.split("|")[1];
+    console.log(`Regenerating embeddings for all notes of user ${userId}`);
+    
+    try {
+      // Get all notes for the user
+      const notes = await ctx.runQuery(api.notes.list);
+      console.log(`Found ${notes.length} notes to reprocess`);
+      
+      // Process each note to recreate chunks and embeddings
+      let processedCount = 0;
+      for (const note of notes) {
+        console.log(`Regenerating chunks and embeddings for note: ${note.title} (${note._id})`);
+        
+        // Delete existing embeddings for this note first
+        const existingEmbeddings = await ctx.runQuery(internal.embeddings.getEmbeddingsForNote, { noteId: note._id });
+        console.log(`Deleting ${existingEmbeddings.length} existing embeddings for note ${note._id}`);
+        for (const embedding of existingEmbeddings) {
+          await ctx.runMutation(internal.embeddings.deleteEmbedding, { embeddingId: embedding._id });
+        }
+        
+        // Process the note to create/update chunks
+        await ctx.runMutation(internal.chunking.processNoteChunks, {
+          noteId: note._id,
+          content: note.content,
+        });
+        
+        // Process the note to create embeddings based on new chunks
+        await ctx.runAction(internal.embeddings.processNoteEmbeddings, {
+          noteId: note._id,
+        });
+        
+        processedCount++;
+      }
+      
+      console.log(`Successfully reprocessed ${processedCount} notes`);
+      return { success: true, count: processedCount };
+    } catch (error) {
+      console.error("Error regenerating embeddings:", error);
+      return { success: false, count: 0 };
+    }
+  }
+}); 

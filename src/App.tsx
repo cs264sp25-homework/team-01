@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignIn } from "./auth/components/sign-in";
 import { SignOut } from "./auth/components/sign-out";
@@ -14,11 +14,14 @@ import { Switch } from "../src/ui/switch";
 
 interface Note {
   _id: Id<"notes">;
-  _creationTime: number;
+  _creationTime?: number;
   title: string;
   content: string;
+  userId?: string;
+  createdAt?: number;
   updatedAt: number;
   contentPreview?: string;
+  similarity?: number;
 }
 
 function MainContent() {
@@ -33,10 +36,62 @@ function MainContent() {
   const renameNote = useMutation(api.notes.rename);
   const deleteNote = useMutation(api.notes.remove);
   const notes = useQuery(api.notes.list);
-  const searchResults = useQuery(
+  
+  // Use regular search or semantic search based on the toggle
+  const regularSearchResults = useQuery(
     api.notes.search,
-    searchQuery.length >= 2 ? { query: searchQuery } : "skip"
+    searchQuery.length >= 2 && !useSemanticSearch ? { query: searchQuery } : "skip"
   );
+  
+  // For semantic search, we need to use an action
+  const semanticSearchAction = useAction(api.notes.semanticSearch);
+  const regenerateEmbeddingsAction = useAction(api.notes.regenerateAllEmbeddings);
+  const [semanticResults, setSemanticResults] = useState<Array<{
+    _id: Id<"notes">;
+    title: string;
+    content: string;
+    updatedAt: number;
+    contentPreview?: string;
+    similarity?: number;
+  }>>([]);
+  const [isLoadingSemanticResults, setIsLoadingSemanticResults] = useState(false);
+  
+  // Update the semantic search indicator to use the loading state
+  const isSemanticSearchActive = searchQuery.length >= 2 && useSemanticSearch;
+  const showSemanticLoadingIndicator = isSemanticSearchActive && isLoadingSemanticResults;
+  const showSemanticActiveIndicator = isSemanticSearchActive && semanticResults.length > 0 && !isLoadingSemanticResults;
+
+  // Handle semantic search
+  useEffect(() => {
+    let isCancelled = false;
+    
+    const performSemanticSearch = async () => {
+      if (searchQuery.length >= 2 && useSemanticSearch) {
+        setIsLoadingSemanticResults(true);
+        try {
+          const results = await semanticSearchAction({ query: searchQuery });
+          if (!isCancelled) {
+            setSemanticResults(results);
+            setIsLoadingSemanticResults(false);
+          }
+        } catch (error) {
+          console.error("Semantic search error:", error);
+          if (!isCancelled) {
+            setSemanticResults([]);
+            setIsLoadingSemanticResults(false);
+          }
+        }
+      } else {
+        setSemanticResults([]);
+      }
+    };
+    
+    performSemanticSearch();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [searchQuery, useSemanticSearch, semanticSearchAction]);
 
   // Filter notes based on search query
   const filteredNotes = useMemo(() => {
@@ -44,8 +99,8 @@ function MainContent() {
       return notes;
     }
     
-    return searchResults || [];
-  }, [notes, searchQuery, searchResults]);
+    return useSemanticSearch ? semanticResults : regularSearchResults || [];
+  }, [notes, searchQuery, regularSearchResults, useSemanticSearch, semanticResults]);
 
   useEffect(() => {
     console.log("MainContent mounted");
@@ -88,7 +143,7 @@ function MainContent() {
     setIsRenameModalOpen(true);
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between px-4 py-3 mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -108,7 +163,7 @@ function MainContent() {
                 <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                 </svg>
-              </div>
+        </div>
               <input
                 type="text"
                 placeholder="Search in notes..."
@@ -126,18 +181,53 @@ function MainContent() {
                   </svg>
                 </button>
               )}
-            </div>
+      </div>
             
-            {/* Semantic search toggle (disabled for now) */}
+            {/* Semantic search toggle */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Semantic search</span>
+              <span className="text-sm text-gray-600">
+                Semantic search
+                {showSemanticLoadingIndicator && 
+                  <span className="ml-2 text-xs text-blue-500 animate-pulse">
+                    (loading...)
+                  </span>
+                }
+                {showSemanticActiveIndicator && 
+                  <span className="ml-2 text-xs text-green-500" title="Showing conceptually related results">
+                    (concept match)
+                  </span>
+                }
+              </span>
               <Switch
                 checked={useSemanticSearch}
                 onCheckedChange={setUseSemanticSearch}
                 aria-label="Toggle semantic search"
-                disabled
               />
-            </div>
+              
+              {useSemanticSearch && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Regenerate embeddings for all notes? This will improve search accuracy but may take a moment.")) {
+                      try {
+                        const result = await regenerateEmbeddingsAction({});
+                        if (result.success) {
+                          alert(`Successfully reprocessed ${result.count} notes for better search accuracy.`);
+                        } else {
+                          alert("Failed to regenerate embeddings.");
+                        }
+                      } catch (error) {
+                        console.error("Error regenerating embeddings:", error);
+                        alert("An error occurred while regenerating embeddings.");
+                      }
+                    }
+                  }}
+                  className="px-2 py-1 ml-2 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
+                  title="Reprocess all notes to improve search accuracy"
+                >
+                  Improve Search
+                </button>
+              )}
+        </div>
             
             <button
               onClick={() => setIsModalOpen(true)}
@@ -174,16 +264,16 @@ function MainContent() {
                 className="relative p-6 transition-shadow bg-white border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:shadow-md group"
               >
                 <div className="absolute transition-opacity opacity-0 top-2 right-2 group-hover:opacity-100">
-                  <button
+        <button
                     onClick={(e) => openRenameModal(note, e)}
                     className="p-1.5 text-gray-500 hover:text-gray-700"
                     title="Rename note"
-                  >
+        >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
-                  </button>
-                  <button
+        </button>
+        <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteNote(note);
@@ -194,8 +284,8 @@ function MainContent() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                  </button>
-                </div>
+        </button>
+      </div>
                 <h3 className="mb-2 text-lg font-medium text-gray-900">{note.title}</h3>
                 {searchQuery && note.contentPreview && !note.title.toLowerCase().includes(searchQuery.toLowerCase()) && (
                   <p className="mb-2 text-sm text-gray-600">
@@ -205,9 +295,9 @@ function MainContent() {
                 <p className="text-sm text-gray-500">
                   Last updated: {new Date(note.updatedAt).toLocaleString()}
                 </p>
-              </div>
+        </div>
             ))
-          )}
+      )}
         </div>
 
         <CreateNoteModal
@@ -257,7 +347,7 @@ function App() {
   return (
     <>
       <Toaster position="top-right" />
-      <Routes>
+    <Routes>
         {/* Root redirects */}
         <Route path="/" element={<Navigate to="/team-01" replace />} />
         
@@ -277,7 +367,7 @@ function App() {
         
         {/* Catch-all route for any unmatched paths */}
         <Route path="*" element={<Navigate to="/team-01" replace />} />
-      </Routes>
+    </Routes>
     </>
   );
 }
