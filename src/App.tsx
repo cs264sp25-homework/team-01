@@ -11,6 +11,18 @@ import "./App.css";
 import { RenameModal } from "./notes/components/RenameModal";
 import { Toaster } from "react-hot-toast";
 import { Switch } from "../src/ui/switch";
+import { ImportIcon } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "./plate-ui/dialog";
+import { Input } from "./plate-ui/input";
+import { Button } from "./ui/button";
+import { toast } from "react-hot-toast";
 
 interface Note {
   _id: Id<"notes">;
@@ -27,11 +39,14 @@ function MainContent() {
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importNoteId, setImportNoteId] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const createNote = useMutation(api.notes.create);
   const renameNote = useMutation(api.notes.rename);
   const deleteNote = useMutation(api.notes.remove);
+  const importNote = useMutation(api.notes.importNote);
   const notes = useQuery(api.notes.list);
   const searchResults = useQuery(
     api.notes.search,
@@ -88,6 +103,38 @@ function MainContent() {
     setIsRenameModalOpen(true);
   };
 
+  // Handle import note
+  const handleImportNote = async () => {
+    if (!importNoteId) {
+      toast.error("Please enter a note ID");
+      return;
+    }
+    
+    try {
+      // Validate if the ID has the correct format for Convex IDs
+      const isValidFormat = /^[a-z0-9]{32}:[a-z0-9]+$/.test(importNoteId);
+      
+      if (!isValidFormat) {
+        toast.error("Invalid note ID format");
+        return;
+      }
+      
+      const newNoteId = await importNote({ 
+        noteId: importNoteId as Id<"notes"> 
+      });
+      
+      setIsImportModalOpen(false);
+      setImportNoteId("");
+      toast.success("Note imported successfully!");
+      
+      // Navigate to the newly imported note
+      navigate(`/notes/${newNoteId}`);
+    } catch (error) {
+      console.error("Failed to import note:", error);
+      toast.error("Failed to import note. Please check the ID and try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
@@ -139,15 +186,26 @@ function MainContent() {
               />
             </div>
             
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 text-gray-100 transition-colors bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-              Create Note
-            </button>
+            {/* Import and Create buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-gray-800 transition-colors bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                <ImportIcon className="w-5 h-5" />
+                Import Note
+              </button>
+              
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-gray-100 transition-colors bg-gray-900 rounded-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Create Note
+              </button>
+            </div>
           </div>
         </div>
 
@@ -225,6 +283,32 @@ function MainContent() {
           onRename={handleRenameNote}
           initialTitle={noteToRename?.title || ""}
         />
+        
+        {/* Import Note Modal */}
+        <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Import Note</DialogTitle>
+              <DialogDescription>
+                Enter the note ID that was shared with you to import the note.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center gap-2 mt-4">
+              <Input
+                value={importNoteId}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
+                placeholder="Paste note ID here..."
+                className="flex-1"
+              />
+            </div>
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleImportNote}>Import</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

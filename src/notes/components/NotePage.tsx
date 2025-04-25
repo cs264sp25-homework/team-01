@@ -4,18 +4,30 @@ import { SignOut } from "../../auth/components/sign-out";
 import { PlateEditor } from "../../editor/components/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
 import ChatSidebar from "../../editor/components/ChatSidebar";
-import { MessageCircleIcon, Loader2, NetworkIcon } from "lucide-react";
+import { MessageCircleIcon, Loader2, NetworkIcon, Share2Icon, ImportIcon } from "lucide-react";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "../../ui/resizable";
 import { Button } from "@/ui/button";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "../../plate-ui/dialog";
+import { Input } from "../../plate-ui/input";
 import TestGeneratorSidebar from "../../editor/components/TestGeneratorSidebar";
 import ConceptMapSidebar from "../../editor/components/ConceptMapSidebar";
 import { BookOpenIcon } from "lucide-react";
 import { useNotes } from "../hooks/useNotes";
 import { navigateToText } from "../hooks/textNavigation";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { toast } from "react-hot-toast";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -33,6 +45,58 @@ export function NotePage() {
     handleRename,
     handleDelete,
   } = useNotes(noteId);
+
+  // Sharing and Import functionality
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importNoteId, setImportNoteId] = useState("");
+  const shareNote = useMutation(api.notes.share);
+  const importNote = useMutation(api.notes.importNote);
+
+  // Handle share button click - copy note ID to clipboard
+  const handleShare = async () => {
+    if (!noteId) return;
+    
+    try {
+      const sharedId = await shareNote({ id: noteId as Id<"notes"> });
+      await navigator.clipboard.writeText(sharedId);
+      toast.success("Note ID copied to clipboard! Share this ID with others.");
+    } catch (error) {
+      console.error("Failed to share note:", error);
+      toast.error("Failed to share note");
+    }
+  };
+
+  // Handle import button click - import note by ID
+  const handleImport = async () => {
+    if (!importNoteId) {
+      toast.error("Please enter a note ID");
+      return;
+    }
+    
+    try {
+      // Validate if the ID has the correct format for Convex IDs
+      const isValidFormat = /^[a-z0-9]{32}:[a-z0-9]+$/.test(importNoteId);
+      
+      if (!isValidFormat) {
+        toast.error("Invalid note ID format");
+        return;
+      }
+      
+      const newNoteId = await importNote({ 
+        noteId: importNoteId as Id<"notes"> 
+      });
+      
+      setIsImportModalOpen(false);
+      setImportNoteId("");
+      toast.success("Note imported successfully!");
+      
+      // Navigate to the newly imported note
+      navigate(`/notes/${newNoteId}`);
+    } catch (error) {
+      console.error("Failed to import note:", error);
+      toast.error("Failed to import note. Please check the ID and try again.");
+    }
+  };
 
   // Sidebar states
   const [activeSidebar, setActiveSidebar] = useState<
@@ -185,6 +249,31 @@ export function NotePage() {
                 </button>
               </div>
             )}
+            
+            {/* Share Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="flex items-center gap-1"
+              title="Share Note"
+            >
+              <Share2Icon className="w-4 h-4" />
+              Share
+            </Button>
+            
+            {/* Import Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-1"
+              title="Import Note"
+            >
+              <ImportIcon className="w-4 h-4" />
+              Import
+            </Button>
+            
             <button
               onClick={handleDeleteWithConfirmation}
               className="p-2 text-red-600 hover:text-red-800"
@@ -301,6 +390,32 @@ export function NotePage() {
           </ResizablePanelGroup>
         </div>
       </div>
+
+      {/* Import Note Modal */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Note</DialogTitle>
+            <DialogDescription>
+              Enter the note ID that was shared with you to import the note.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 mt-4">
+            <Input
+              value={importNoteId}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
+              placeholder="Paste note ID here..."
+              className="flex-1"
+            />
+          </div>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleImport}>Import</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

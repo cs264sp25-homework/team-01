@@ -290,4 +290,78 @@ function extractTextFromContent(content: any[]): string {
     
     return "";
   }).join(" ");
-} 
+}
+
+// Share a note to get a shareable ID (the note ID can be used directly)
+export const share = mutation({
+  args: {
+    id: v.id("notes"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    const existingNote = await ctx.db.get(args.id);
+    
+    if (!existingNote) {
+      throw new Error("Note not found");
+    }
+    
+    if (existingNote.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+    
+    // Return the note ID to be shared
+    return args.id;
+  },
+});
+
+// Import a note by ID
+export const importNote = mutation({
+  args: {
+    noteId: v.id("notes"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    // Get the original note
+    const originalNote = await ctx.db.get(args.noteId);
+    
+    if (!originalNote) {
+      throw new Error("Note not found");
+    }
+    
+    const now = Date.now();
+    
+    // Create a new note with the same content but for the current user
+    const newNoteId = await ctx.db.insert("notes", {
+      title: `${originalNote.title} (Imported)`,
+      content: originalNote.content,
+      userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    
+    // Process the note to create chunks
+    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
+      noteId: newNoteId,
+      content: originalNote.content,
+    });
+    
+    // Process the note to create embeddings
+    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
+      noteId: newNoteId,
+    });
+    
+    return newNoteId;
+  },
+}); 
