@@ -292,7 +292,7 @@ function extractTextFromContent(content: any[]): string {
   }).join(" ");
 }
 
-// Share a note to get a shareable version
+// Share a note to get a shareable ID (the note ID can be used directly)
 export const share = mutation({
   args: {
     id: v.id("notes"),
@@ -315,20 +315,15 @@ export const share = mutation({
       throw new Error("Unauthorized");
     }
     
-    // Return a shareable object with the note data
-    return {
-      id: args.id,
-      title: existingNote.title,
-      content: existingNote.content
-    };
+    // Return the note ID string to be shared
+    return args.id.toString();
   },
 });
 
-// Import a note by title and content
+// Import a note by string ID
 export const importNote = mutation({
   args: {
-    title: v.string(),
-    content: v.string(),
+    noteIdString: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -338,12 +333,25 @@ export const importNote = mutation({
 
     const userId = identity.tokenIdentifier.split("|")[1];
     
+    // Convert the string ID to a proper Convex ID
+    const noteId = ctx.db.normalizeId("notes", args.noteIdString);
+    if (!noteId) {
+      throw new Error("Invalid note ID format");
+    }
+    
+    // Get the original note
+    const originalNote = await ctx.db.get(noteId);
+    
+    if (!originalNote) {
+      throw new Error("Note not found");
+    }
+    
     const now = Date.now();
     
-    // Create a new note with the provided content for the current user
+    // Create a new note with the same content but for the current user
     const newNoteId = await ctx.db.insert("notes", {
-      title: args.title,
-      content: args.content,
+      title: `${originalNote.title} (Imported)`,
+      content: originalNote.content,
       userId,
       createdAt: now,
       updatedAt: now,
@@ -352,7 +360,7 @@ export const importNote = mutation({
     // Process the note to create chunks
     await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
       noteId: newNoteId,
-      content: args.content,
+      content: originalNote.content,
     });
     
     // Process the note to create embeddings

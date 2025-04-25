@@ -106,30 +106,14 @@ function MainContent() {
   // Handle import note
   const handleImportNote = async () => {
     if (!importNoteId) {
-      toast.error("Please enter the shared note data");
+      toast.error("Please enter a note ID");
       return;
     }
     
     try {
-      // Parse the shared note data
-      let noteData;
-      try {
-        noteData = JSON.parse(importNoteId);
-      } catch (e) {
-        toast.error("Invalid shared data format. Please paste the complete shared data.");
-        return;
-      }
-      
-      // Validate the note data
-      if (!noteData || !noteData.title || !noteData.content) {
-        toast.error("Invalid note data. Required fields are missing.");
-        return;
-      }
-      
-      // Import the note with title and content
+      // Import the note with the ID string
       const newNoteId = await importNote({ 
-        title: `${noteData.title} (Imported)`,
-        content: noteData.content 
+        noteIdString: importNoteId
       });
       
       setIsImportModalOpen(false);
@@ -140,7 +124,7 @@ function MainContent() {
       navigate(`/notes/${newNoteId}`);
     } catch (error) {
       console.error("Failed to import note:", error);
-      toast.error("Failed to import note. Please check the data and try again.");
+      toast.error("Failed to import note. Please check the ID and try again.");
     }
   };
 
@@ -299,14 +283,14 @@ function MainContent() {
             <DialogHeader>
               <DialogTitle>Import Note</DialogTitle>
               <DialogDescription>
-                Enter the shared note data to import the note.
+                Enter the note ID that was shared with you to import the note.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2 mt-4">
               <Input
                 value={importNoteId}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
-                placeholder="Paste shared note data here..."
+                placeholder="Paste note ID here..."
                 className="flex-1"
               />
             </div>
