@@ -292,7 +292,7 @@ function extractTextFromContent(content: any[]): string {
   }).join(" ");
 }
 
-// Share a note to get a shareable ID (the note ID can be used directly)
+// Generate a unique share code and record sharing info
 export const share = mutation({
   args: {
     id: v.id("notes"),
@@ -315,15 +315,36 @@ export const share = mutation({
       throw new Error("Unauthorized");
     }
     
-    // Return the note ID string to be shared
-    return args.id.toString();
+    // Generate a unique share code
+    const shareCode = Math.random().toString(36).substring(2, 10);
+    
+    // Get or create share info
+    const existingShares = await ctx.db
+      .query("shared_notes")
+      .withIndex("by_noteId", (q) => q.eq("noteId", args.id))
+      .collect();
+      
+    if (existingShares.length > 0) {
+      // Return existing share code
+      return existingShares[0].shareCode;
+    }
+    
+    // Record share info
+    await ctx.db.insert("shared_notes", {
+      noteId: args.id,
+      ownerId: userId,
+      shareCode: shareCode,
+      createdAt: Date.now()
+    });
+    
+    return shareCode;
   },
 });
 
-// Import a note by string ID
+// Import a note by share code
 export const importNote = mutation({
   args: {
-    noteIdString: v.string(),
+    shareCode: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -333,14 +354,18 @@ export const importNote = mutation({
 
     const userId = identity.tokenIdentifier.split("|")[1];
     
-    // Convert the string ID to a proper Convex ID
-    const noteId = ctx.db.normalizeId("notes", args.noteIdString);
-    if (!noteId) {
-      throw new Error("Invalid note ID format");
+    // Get shared note info
+    const sharedNoteInfo = await ctx.db
+      .query("shared_notes")
+      .withIndex("by_shareCode", (q) => q.eq("shareCode", args.shareCode))
+      .first();
+    
+    if (!sharedNoteInfo) {
+      throw new Error("Invalid share code");
     }
     
     // Get the original note
-    const originalNote = await ctx.db.get(noteId);
+    const originalNote = await ctx.db.get(sharedNoteInfo.noteId);
     
     if (!originalNote) {
       throw new Error("Note not found");

@@ -52,31 +52,31 @@ export function NotePage() {
   const shareNote = useMutation(api.notes.share);
   const importNote = useMutation(api.notes.importNote);
 
-  // Handle share button click - copy note ID to clipboard
+  // Handle share button click - copy share code to clipboard
   const handleShare = async () => {
     if (!noteId) return;
     
     try {
-      const sharedId = await shareNote({ id: noteId as Id<"notes"> });
-      await navigator.clipboard.writeText(sharedId);
-      toast.success("Note ID copied to clipboard! Share this ID with others.");
+      const shareCode = await shareNote({ id: noteId as Id<"notes"> });
+      await navigator.clipboard.writeText(shareCode);
+      toast.success("Share code copied to clipboard! Share this code with others.");
     } catch (error) {
       console.error("Failed to share note:", error);
       toast.error("Failed to share note");
     }
   };
 
-  // Handle import button click - import note by ID string
+  // Handle import button click - import note by share code
   const handleImport = async () => {
     if (!importNoteId) {
-      toast.error("Please enter a note ID");
+      toast.error("Please enter a share code");
       return;
     }
     
     try {
-      // Import the note with the ID string
+      // Import the note with the share code
       const newNoteId = await importNote({ 
-        noteIdString: importNoteId
+        shareCode: importNoteId
       });
       
       setIsImportModalOpen(false);
@@ -87,7 +87,7 @@ export function NotePage() {
       navigate(`/notes/${newNoteId}`);
     } catch (error) {
       console.error("Failed to import note:", error);
-      toast.error("Failed to import note. Please check the ID and try again.");
+      toast.error("Failed to import note. Please check the share code and try again.");
     }
   };
 
@@ -390,14 +390,14 @@ export function NotePage() {
           <DialogHeader>
             <DialogTitle>Import Note</DialogTitle>
             <DialogDescription>
-              Enter the note ID that was shared with you to import the note.
+              Enter the share code that was shared with you to import the note.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2 mt-4">
             <Input
               value={importNoteId}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
-              placeholder="Paste note ID here..."
+              placeholder="Paste share code here..."
               className="flex-1"
             />
           </div>

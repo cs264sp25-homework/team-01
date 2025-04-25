@@ -106,14 +106,14 @@ function MainContent() {
   // Handle import note
   const handleImportNote = async () => {
     if (!importNoteId) {
-      toast.error("Please enter a note ID");
+      toast.error("Please enter a share code");
       return;
     }
     
     try {
-      // Import the note with the ID string
+      // Import the note with the share code
       const newNoteId = await importNote({ 
-        noteIdString: importNoteId
+        shareCode: importNoteId
       });
       
       setIsImportModalOpen(false);
@@ -124,7 +124,7 @@ function MainContent() {
       navigate(`/notes/${newNoteId}`);
     } catch (error) {
       console.error("Failed to import note:", error);
-      toast.error("Failed to import note. Please check the ID and try again.");
+      toast.error("Failed to import note. Please check the share code and try again.");
     }
   };
 
@@ -283,14 +283,14 @@ function MainContent() {
             <DialogHeader>
               <DialogTitle>Import Note</DialogTitle>
               <DialogDescription>
-                Enter the note ID that was shared with you to import the note.
+                Enter the share code that was shared with you to import the note.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2 mt-4">
               <Input
                 value={importNoteId}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
-                placeholder="Paste note ID here..."
+                placeholder="Paste share code here..."
                 className="flex-1"
               />
             </div>

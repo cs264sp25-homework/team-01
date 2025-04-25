@@ -21,6 +21,14 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+  shared_notes: defineTable({
+    noteId: v.id("notes"),
+    ownerId: v.string(),
+    shareCode: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_noteId", ["noteId"])
+    .index("by_shareCode", ["shareCode"]),
   messages: defineTable({
     content: v.string(),
     sender: v.union(v.literal("user"), v.literal("ai")),
