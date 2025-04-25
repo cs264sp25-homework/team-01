@@ -75,7 +75,8 @@ export function NotePage() {
     
     try {
       // Validate if the ID has the correct format for Convex IDs
-      const isValidFormat = /^[a-z0-9]{32}:[a-z0-9]+$/.test(importNoteId);
+      // Accept IDs in the format like k17bbxb7rjk3mz6yf8jhhnqs9s7ej07f
+      const isValidFormat = /^[a-z0-9]{32}$/.test(importNoteId);
       
       if (!isValidFormat) {
         toast.error("Invalid note ID format");
