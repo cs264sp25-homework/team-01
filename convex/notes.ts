@@ -292,7 +292,7 @@ function extractTextFromContent(content: any[]): string {
   }).join(" ");
 }
 
-// Share a note to get a shareable ID (the note ID can be used directly)
+// Share a note to get a shareable version
 export const share = mutation({
   args: {
     id: v.id("notes"),
@@ -315,15 +315,20 @@ export const share = mutation({
       throw new Error("Unauthorized");
     }
     
-    // Return the note ID to be shared
-    return args.id;
+    // Return a shareable object with the note data
+    return {
+      id: args.id,
+      title: existingNote.title,
+      content: existingNote.content
+    };
   },
 });
 
-// Import a note by ID
+// Import a note by title and content
 export const importNote = mutation({
   args: {
-    noteId: v.id("notes"),
+    title: v.string(),
+    content: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -333,19 +338,12 @@ export const importNote = mutation({
 
     const userId = identity.tokenIdentifier.split("|")[1];
     
-    // Get the original note
-    const originalNote = await ctx.db.get(args.noteId);
-    
-    if (!originalNote) {
-      throw new Error("Note not found");
-    }
-    
     const now = Date.now();
     
-    // Create a new note with the same content but for the current user
+    // Create a new note with the provided content for the current user
     const newNoteId = await ctx.db.insert("notes", {
-      title: `${originalNote.title} (Imported)`,
-      content: originalNote.content,
+      title: args.title,
+      content: args.content,
       userId,
       createdAt: now,
       updatedAt: now,
@@ -354,7 +352,7 @@ export const importNote = mutation({
     // Process the note to create chunks
     await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
       noteId: newNoteId,
-      content: originalNote.content,
+      content: args.content,
     });
     
     // Process the note to create embeddings

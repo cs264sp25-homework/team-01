@@ -52,39 +52,51 @@ export function NotePage() {
   const shareNote = useMutation(api.notes.share);
   const importNote = useMutation(api.notes.importNote);
 
-  // Handle share button click - copy note ID to clipboard
+  // Handle share button click - copy note data to clipboard
   const handleShare = async () => {
     if (!noteId) return;
     
     try {
-      const sharedId = await shareNote({ id: noteId as Id<"notes"> });
-      await navigator.clipboard.writeText(sharedId);
-      toast.success("Note ID copied to clipboard! Share this ID with others.");
+      const sharedNote = await shareNote({ id: noteId as Id<"notes"> });
+      
+      // Create a shareable string with the note data
+      const shareableData = JSON.stringify(sharedNote);
+      
+      await navigator.clipboard.writeText(shareableData);
+      toast.success("Note data copied to clipboard! Share this with others.");
     } catch (error) {
       console.error("Failed to share note:", error);
       toast.error("Failed to share note");
     }
   };
 
-  // Handle import button click - import note by ID
+  // Handle import button click - import note from shared data
   const handleImport = async () => {
     if (!importNoteId) {
-      toast.error("Please enter a note ID");
+      toast.error("Please enter the shared note data");
       return;
     }
     
     try {
-      // Validate if the ID has the correct format for Convex IDs
-      // Accept IDs in the format like k17bbxb7rjk3mz6yf8jhhnqs9s7ej07f
-      const isValidFormat = /^[a-z0-9]{32}$/.test(importNoteId);
-      
-      if (!isValidFormat) {
-        toast.error("Invalid note ID format");
+      // Parse the shared note data
+      let noteData;
+      try {
+        noteData = JSON.parse(importNoteId);
+      } catch (e) {
+        toast.error("Invalid shared data format. Please paste the complete shared data.");
         return;
       }
       
+      // Validate the note data
+      if (!noteData || !noteData.title || !noteData.content) {
+        toast.error("Invalid note data. Required fields are missing.");
+        return;
+      }
+      
+      // Import the note with title and content
       const newNoteId = await importNote({ 
-        noteId: importNoteId as Id<"notes"> 
+        title: `${noteData.title} (Imported)`,
+        content: noteData.content 
       });
       
       setIsImportModalOpen(false);
@@ -95,7 +107,7 @@ export function NotePage() {
       navigate(`/notes/${newNoteId}`);
     } catch (error) {
       console.error("Failed to import note:", error);
-      toast.error("Failed to import note. Please check the ID and try again.");
+      toast.error("Failed to import note. Please check the data and try again.");
     }
   };
 
@@ -398,14 +410,14 @@ export function NotePage() {
           <DialogHeader>
             <DialogTitle>Import Note</DialogTitle>
             <DialogDescription>
-              Enter the note ID that was shared with you to import the note.
+              Enter the shared note data to import the note.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2 mt-4">
             <Input
               value={importNoteId}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
-              placeholder="Paste note ID here..."
+              placeholder="Paste shared note data here..."
               className="flex-1"
             />
           </div>
