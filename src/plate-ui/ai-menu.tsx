@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { type NodeEntry, isHotkey } from "@udecode/plate";
+import { type NodeEntry } from "@udecode/plate";
 import {
   AIChatPlugin,
   useEditorChat,
@@ -23,7 +23,7 @@ import { useChat } from "@/editor/hooks/use-chat";
 
 import { AIChatEditor } from "./ai-chat-editor";
 import { AIMenuItems } from "./ai-menu-items";
-import { Command, CommandList, InputCommand } from "../ui/command";
+import { Command, CommandList } from "../ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "./popover";
 
 export function AIMenu() {
@@ -36,7 +36,7 @@ export function AIMenu() {
 
   const chat = useChat();
 
-  const { input, isLoading, messages, setInput } = chat;
+  const { isLoading, messages, setInput } = chat;
   const [anchorElement, setAnchorElement] = React.useState<HTMLElement | null>(
     null
   );

@@ -11,7 +11,7 @@ export const useChat = () => {
   return useBaseChat({
     id: 'editor',
     body: {},
-    fetch: async (input, init) => {
+    fetch: async (_, init) => {
       try {
         // Extract the prompt data from the request
         const body = init?.body ? JSON.parse(init.body.toString()) : {};

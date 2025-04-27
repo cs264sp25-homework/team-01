@@ -14,7 +14,6 @@ interface RenameDialogProps {
 export function RenameDialog({
   isOpen,
   onClose,
-  currentTitle,
   newTestName,
   onNewTestNameChange,
   onRename,

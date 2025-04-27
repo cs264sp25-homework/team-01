@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useElement, useEditorRef } from '@udecode/plate/react';
-import { ReactEditor } from 'slate-react';
 
 // Add a global function to test ghost text rendering directly
 if (typeof window !== 'undefined') {
@@ -43,7 +42,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Force rendering ghost text for testing
-const FORCE_VISIBLE = true;
+// const FORCE_VISIBLE = true;
 
 export const GhostText = () => {
   const element = useElement();
