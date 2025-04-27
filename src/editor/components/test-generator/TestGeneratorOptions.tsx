@@ -1,7 +1,7 @@
 import { Slider } from "@/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/ui/radio-group";
 import { Checkbox } from "@/ui/checkbox";
-import { QuestionTypes } from "./test-generator-types";
+import { NoteNode, QuestionTypes } from "./test-generator-types";
 import { useState, useEffect } from "react";
 
 interface TestGeneratorOptionsProps {

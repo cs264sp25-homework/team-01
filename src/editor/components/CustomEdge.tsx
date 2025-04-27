@@ -25,7 +25,7 @@ export default function CustomEdge({
   label,
 }: EdgeProps<CustomEdgeData>) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(label || data?.label || "");
+  const [editValue, setEditValue] = useState<string>((label || data?.label || "").toString());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -56,7 +56,7 @@ export default function CustomEdge({
     }
     if (evt.key === "Escape") {
       setIsEditing(false);
-      setEditValue(label || data?.label || "");
+      setEditValue((label || data?.label || "").toString());
     }
   };
 

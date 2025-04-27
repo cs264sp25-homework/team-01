@@ -236,6 +236,7 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
           numQuestions,
           types: getSelectedQuestionTypes(questionTypes),
           difficulty,
+          sections: selectedSections,
         },
       });
       
@@ -368,7 +369,10 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
           isSubmitted={isSubmitted}
           isGrading={isGrading}
           gradingProgress={gradingProgress}
-          userAnswers={userAnswers}
+          userAnswers={Object.entries(userAnswers).reduce((acc, [key, value]) => ({
+            ...acc,
+            [key]: value || ''
+          }), {})}
           selectedTestId={selectedTestId}
           onGenerate={handleGenerate}
           onSubmit={handleSubmitTest}
@@ -379,7 +383,6 @@ export default function TestGeneratorSidebar({ onClose, noteId, navigateToText }
             setView("generate");
             handleNewTest();
           }}
-          questionTypes={questionTypes}
           hasValidSections={hasValidSections}
         />
       </div>

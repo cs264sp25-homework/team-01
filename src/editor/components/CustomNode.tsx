@@ -43,7 +43,7 @@ export default function CustomNode({
     data.onLabelChange?.(editValue);
   };
 
-  const handleClick = (evt: React.MouseEvent) => {
+  const handleClick = (_: React.MouseEvent) => {
     // Get the editor element
     const editorEl = document.querySelector(
       '[data-slate-editor="true"]'
