@@ -65,7 +65,6 @@ export const navigateToText = (text: string) => {
     // Try to find a section with multiple unique words close together
     let bestSection = "";
     let bestMatchCount = 0;
-    let bestSectionIndex = -1;
     
     for (let i = 0; i < editorWords.length - 15; i++) {
       const section = editorWords.slice(i, i + 15).join(' ');
@@ -80,7 +79,6 @@ export const navigateToText = (text: string) => {
       if (matchCount > bestMatchCount) {
         bestMatchCount = matchCount;
         bestSection = section;
-        bestSectionIndex = i;
       }
       
       if (matchCount >= 2) { // If at least 2 unique words are found close together
