@@ -1,9 +1,8 @@
-import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import OpenAI from "openai";
 import { api } from "./_generated/api";
-import { Configuration, OpenAIApi } from "openai-edge";
 import { Id } from "./_generated/dataModel";
 
 
@@ -235,7 +234,7 @@ export const completeText = action({
  args: {
    prompt: v.string(),
  },
- handler: async (ctx, args) => {
+ handler: async (_, args) => {
    try {
      // Prepare the API parameters for text completion
      const completion = await openai.chat.completions.create({
@@ -290,7 +289,7 @@ export const processAICommand = action({
    commandType: v.string(),
    editorContent: v.optional(v.string()),
  },
- handler: async (ctx, args) => {
+ handler: async (_, args) => {
    try {
      const { prompt, commandType, editorContent } = args;
     

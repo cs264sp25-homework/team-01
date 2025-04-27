@@ -1,8 +1,7 @@
 import { mutation, query, action } from "./_generated/server";
 import { v } from "convex/values";
-import { Doc, Id } from "./_generated/dataModel";
+import {  Id } from "./_generated/dataModel";
 import { api, internal } from "./_generated/api";
-import { ConvexError } from "convex/values";
 
 // Get all notes for the authenticated user
 export const list = query({
