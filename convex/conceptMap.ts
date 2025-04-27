@@ -40,8 +40,9 @@ const nodeSchema = v.object({
   data: v.object({
     label: v.string(),
   }),
-  // Allow for additional properties
-  [v.union(v.literal("style"), v.literal("width"), v.literal("height"))]: v.any(),
+  style: v.optional(v.any()),
+  width: v.optional(v.any()),
+  height: v.optional(v.any()),
 });
 
 const edgeSchema = v.object({
@@ -52,8 +53,9 @@ const edgeSchema = v.object({
   data: v.optional(v.object({
     label: v.optional(v.string()),
   })),
-  // Allow for additional properties
-  [v.union(v.literal("style"), v.literal("markerEnd"), v.literal("labelStyle"))]: v.any(),
+  style: v.optional(v.any()),
+  markerEnd: v.optional(v.any()),
+  labelStyle: v.optional(v.any()),
 });
 
 // Store a concept map for a note
