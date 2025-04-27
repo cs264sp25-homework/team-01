@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/ui/button";
 import { XIcon, RefreshCw, Download } from "lucide-react";
 import { useQuery, useAction, useMutation } from "convex/react";
@@ -7,15 +7,12 @@ import { Id } from "../../../convex/_generated/dataModel";
 import ReactFlow, {
   Background,
   Controls,
-  Node,
-  Edge,
-  Position,
-  MarkerType,
   ReactFlowInstance,
   useNodesState,
   useEdgesState,
   Connection,
   addEdge,
+  MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toast } from "react-hot-toast";
@@ -173,7 +170,7 @@ export default function ConceptMapSidebar({
             label: "New Connection",
             data: { label: "New Connection" },
             markerEnd: {
-              type: "arrowclosed",
+              type: MarkerType.ArrowClosed,
               width: 20,
               height: 20,
               color: "#555",
@@ -240,7 +237,7 @@ export default function ConceptMapSidebar({
           onEdgeLabelChange(edge.id, newLabel),
       },
       markerEnd: {
-        type: "arrowclosed",
+        type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
         color: "#555",

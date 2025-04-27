@@ -209,7 +209,7 @@ export const gradeShortAnswer = action({
     answer: v.string(),
     userAnswer: v.string(),
   },
-  handler: async (ctx, args): Promise<{ score: number; feedback: string }> => {
+  handler: async (_, args): Promise<{ score: number; feedback: string }> => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error("OpenAI API key not found");
