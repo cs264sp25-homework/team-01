@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import OpenAI from "openai";
 import { api } from "./_generated/api";
 import { Configuration, OpenAIApi } from "openai-edge";
+import { Id } from "./_generated/dataModel";
 
 
 // Organize notes using OpenAI
@@ -520,8 +521,8 @@ export const generateConceptMap = action({
         messages: [
           {
             role: "system",
-            content: `You are a concept map generator. Analyze the provided notes and create a concept map structure.
-            Extract key concepts, their relationships, and organize them in a network structure.
+            content: `You are a concept map generator. Analyze the provided notes and create a hierarchical concept map structure.
+            Extract key concepts and their relationships, organizing them in a clear, hierarchical network structure.
             
             Your output should be a valid JSON object with the following structure:
             {
@@ -545,20 +546,90 @@ export const generateConceptMap = action({
               ]
             }
             
-            Rules:
-            1. Node IDs must be unique strings
-            2. Edge sources and targets must reference existing node IDs
-            3. Position coordinates should create a readable layout:
-               - Ensure nodes are at least 200px apart horizontally and 150px apart vertically
-               - Consider edge label space (leave at least 100px between nodes connected by labeled edges)
-               - Position nodes on a grid-like layout when possible
-               - Offset nodes slightly to avoid perfect alignment that could cause overlap
-            4. Main concepts should be central
-            5. Related concepts should be connected with meaningful edges
-            6. Include 5-15 nodes depending on content complexity
-            7. Keep edge labels short and concise (1-3 words maximum)
-            8. Do not include any explanation or text outside the JSON structure
-            9. Make sure the output is valid JSON that can be parsed
+            Concept Map Structure Rules:
+            1. Create a STRICT HIERARCHICAL structure:
+               - Main concept at the top center (Level 0)
+               - Sub-concepts branch out below in a tree-like structure
+               - Maximum of 3 levels deep (Level 0, 1, and 2)
+               - ONLY create edges between adjacent levels:
+                 * Level 0 → Level 1
+                 * Level 1 → Level 2
+               - NO edges between:
+                 * Same level nodes (no horizontal connections)
+                 * Level 0 → Level 2 (no skipping levels)
+                 * Level 2 → Level 1 (no upward connections)
+            
+            2. Node Limits and Selection:
+               - Include 5-7 nodes total (not counting the main concept)
+               - Focus on the most important concepts only
+               - Combine similar concepts
+               - Ensure each node adds unique value
+               - Limit to maximum 3 nodes per level
+               - Keep node labels short (maximum 20 characters if possible)
+            
+            3. Node Positioning and Spacing:
+               - Canvas dimensions: 1200px wide (x: 0 to 1200) × 600px high (y: 0 to 600)
+               - Main concept (Level 0): centered at (600, 50)
+               
+               - Level 1 nodes (y = 200):
+                 * For 1 node: x = 600
+                 * For 2 nodes: x = 300, 900
+                 * For 3 nodes: x = 200, 600, 1000
+               
+               - Level 2 nodes (y = 400):
+                 * Position relative to parent with minimum 400px horizontal spacing
+                 * Left child: parent.x - 400
+                 * Right child: parent.x + 400
+                 * If single child: parent.x
+               
+               - Spacing Rules:
+                 * Minimum 400px horizontal spacing between ANY two nodes at the same level
+                 * For nodes with labels > 15 characters, increase horizontal spacing to 500px
+                 * 200px minimum vertical spacing between levels
+                 * When positioning nodes, account for label length:
+                   - Short labels (<= 15 chars): normal spacing
+                   - Medium labels (16-25 chars): add 100px to spacing
+                   - Long labels (>25 chars): add 200px to spacing
+            
+            4. Edge Guidelines:
+               - Use clear, concise relationship labels (2-3 words maximum)
+               - Relationships should flow from general to specific
+               - Use consistent relationship types:
+                 * "consists of", "includes", "contains" for part-whole
+                 * "leads to", "results in" for cause-effect
+                 * "influences", "affects" for relationships
+                 * "requires", "needs" for dependencies
+               - ONLY create edges between adjacent levels
+               - NO horizontal or level-skipping edges
+            
+            5. Layout Balance:
+               - Center the entire concept map around x = 600
+               - Ensure symmetrical distribution when possible
+               - If nodes have long labels:
+                 * Stagger their vertical positions slightly (±50px)
+                 * Increase horizontal spacing between them
+               - For adjacent nodes with long labels, offset one slightly lower
+                 than the other to prevent overlap
+            
+            6. Node Placement Strategy:
+               - Start with the widest spacing possible within the canvas
+               - When placing nodes at the same level:
+                 * Calculate approximate label width (characters × 10px)
+                 * Add 100px padding between nodes
+                 * Adjust positions to prevent any potential overlap
+               - If two nodes would be closer than 400px, offset one vertically
+                 by 50px down
+            
+            7. Special Cases:
+               - For nodes with labels > 25 characters:
+                 * Consider breaking into two lines using " - " or ": "
+                 * If breaking is not possible, ensure extra spacing
+               - When multiple long-label nodes are on the same level:
+                 * Alternate their y-positions slightly (±30px)
+                 * Increase horizontal spacing between them by 100px
+              
+            Do not include any explanation or text outside the JSON structure.
+            Make sure the output is valid JSON that can be parsed.
             `
           },
           {
@@ -605,7 +676,7 @@ export const generateConceptMap = action({
         await ctx.runMutation(api.conceptMap.storeConceptMap, {
           nodes: parsed.nodes,
           edges: parsed.edges,
-          noteId: args.noteId,
+          noteId: args.noteId as Id<"notes">,
         });
         
         return { conceptMap: parsed };

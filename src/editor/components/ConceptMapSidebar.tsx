@@ -1,79 +1,208 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/ui/button";
 import { XIcon, RefreshCw, Download } from "lucide-react";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   Node,
   Edge,
   Position,
   MarkerType,
   ReactFlowInstance,
+  useNodesState,
+  useEdgesState,
+  Connection,
+  addEdge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toast } from "react-hot-toast";
 import { toPng } from "html-to-image";
+import CustomNode from "./CustomNode";
+import CustomEdge from "./CustomEdge";
+
+// Define node types for ReactFlow
+const nodeTypes = {
+  custom: CustomNode,
+};
+
+// Define edge types for ReactFlow
+const edgeTypes = {
+  custom: CustomEdge,
+};
 
 interface ConceptMapSidebarProps {
   onClose: () => void;
   noteId: Id<"notes">;
 }
 
-// Basic node style
-const nodeStyle = {
-  background: "#f5f5f5",
-  //color: "#333",
-  color: "#107cd9",
-  border: "1px solid #ccc",
-  borderRadius: "5px",
-  padding: "10px",
-  fontSize: "14px",
-  width: 180,
-  textAlign: "center" as const,
-};
-
 export default function ConceptMapSidebar({
   onClose,
   noteId,
 }: ConceptMapSidebarProps) {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
   const reactFlowRef = useRef<HTMLDivElement>(null);
 
-  // Fetch the note data
+  // Get the note data
   const note = useQuery(api.notes.get, { id: noteId });
-
-  // Fetch existing concept map from the database
-  const conceptMap = useQuery(api.conceptMap.getConceptMap, { noteId });
 
   // Get the generateConceptMap action
   const generateConceptMapAction = useAction(api.openai.generateConceptMap);
 
+  // Get the storeConceptMap mutation
+  const storeConceptMap = useMutation(api.conceptMap.storeConceptMap);
+
+  // Fetch existing concept map from the database
+  const conceptMap = useQuery(api.conceptMap.getConceptMap, { noteId });
+
+  // Save changes to the database
+  const saveChanges = useCallback(
+    async (showToast = false) => {
+      if (!nodes.length) return;
+
+      try {
+        // Ensure nodes have proper position data and remove callbacks
+        const nodesToSave = nodes.map((node) => ({
+          id: node.id,
+          type: node.type,
+          position: node.position || { x: 0, y: 0 },
+          data: {
+            label: node.data.label || "Untitled",
+          },
+          // Preserve width and height if they exist
+          ...(node.width ? { width: node.width } : {}),
+          ...(node.height ? { height: node.height } : {}),
+        }));
+
+        // Ensure edges have proper data structure and remove callbacks
+        const edgesToSave = edges.map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          type: edge.type,
+          label: edge.label || edge.data?.label || "",
+          data: {
+            label: edge.label || edge.data?.label || "",
+          },
+        }));
+
+        await storeConceptMap({
+          nodes: nodesToSave,
+          edges: edgesToSave,
+          noteId,
+        });
+
+        if (showToast) {
+          toast.success("Changes saved", { id: "save-concept-map" });
+        }
+      } catch (error) {
+        console.error("Error saving changes:", error);
+        toast.error("Failed to save changes", { id: "save-concept-map" });
+      }
+    },
+    [nodes, edges, noteId, storeConceptMap]
+  );
+
+  // Handle closing the sidebar
+  const handleClose = useCallback(async () => {
+    if (nodes.length || edges.length) {
+      await saveChanges(true);
+    }
+    onClose();
+  }, [nodes, edges, saveChanges, onClose]);
+
+  // Handle node label changes
+  const onNodeLabelChange = useCallback(
+    (nodeId: string, newLabel: string) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            // Ensure we maintain the node's position when updating
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                label: newLabel || "Untitled",
+              },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // Handle edge label changes
+  const onEdgeLabelChange = useCallback(
+    (edgeId: string, newLabel: string) => {
+      setEdges((eds) =>
+        eds.map((edge) => {
+          if (edge.id === edgeId) {
+            return {
+              ...edge,
+              label: newLabel,
+              data: {
+                ...edge.data,
+                label: newLabel,
+              },
+            };
+          }
+          return edge;
+        })
+      );
+    },
+    [setEdges]
+  );
+
+  // Handle new connections
+  const onConnect = useCallback(
+    (params: Connection) => {
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            type: "custom",
+            label: "New Connection",
+            data: { label: "New Connection" },
+            markerEnd: {
+              type: "arrowclosed",
+              width: 20,
+              height: 20,
+              color: "#555",
+            },
+            style: {
+              strokeWidth: 2,
+            },
+          },
+          eds
+        )
+      );
+    },
+    [setEdges]
+  );
+
   // Auto fit view when nodes are loaded or component is resized
   useEffect(() => {
     if (reactFlowInstance && nodes.length > 0) {
-      // Small delay to ensure the container has properly rendered
       const timeoutId = setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1 });
       }, 100);
-
       return () => clearTimeout(timeoutId);
     }
-  }, [reactFlowInstance, nodes, conceptMap]);
+  }, [reactFlowInstance, nodes]);
 
   // Handle container resizes
   useEffect(() => {
     if (reactFlowRef.current && reactFlowInstance && nodes.length > 0) {
       const observer = new ResizeObserver(() => {
-        // Small delay to ensure resize is complete
         setTimeout(() => {
           reactFlowInstance.fitView({ padding: 0.1 });
         }, 100);
@@ -91,37 +220,33 @@ export default function ConceptMapSidebar({
     // Apply custom styles to nodes
     const styledNodes = conceptMapData.nodes.map((node: any) => ({
       ...node,
-      style: nodeStyle,
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
+      type: "custom",
+      position: node.position || { x: 0, y: 0 },
+      data: {
+        label: node.data?.label || "Untitled",
+        onLabelChange: (newLabel: string) =>
+          onNodeLabelChange(node.id, newLabel),
+      },
     }));
 
-    // Style edges with arrows
+    // Style edges
     const styledEdges = conceptMapData.edges.map((edge: any) => ({
       ...edge,
-      type: "smoothstep",
-      animated: false,
-      style: { stroke: "#555" },
+      type: "custom",
+      label: edge.label || edge.data?.label || "",
+      data: {
+        label: edge.label || edge.data?.label || "",
+        onLabelChange: (newLabel: string) =>
+          onEdgeLabelChange(edge.id, newLabel),
+      },
       markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
+        type: "arrowclosed",
+        width: 20,
+        height: 20,
         color: "#555",
       },
-      labelStyle: {
-        fill: "#333",
-        fontWeight: 500,
-        fontSize: 12,
-        background: "white",
-        padding: "2px 4px",
-        borderRadius: "4px",
-        border: "1px solid #eee",
-        boxShadow: "none",
-      },
-      labelBgStyle: {
-        fill: "white",
-        fillOpacity: 0.9,
-        strokeWidth: 0,
+      style: {
+        strokeWidth: 2,
       },
     }));
 
@@ -135,6 +260,16 @@ export default function ConceptMapSidebar({
       applyStyles(conceptMap);
     }
   }, [conceptMap]);
+
+  // Auto-save changes after a delay
+  useEffect(() => {
+    if (nodes.length || edges.length) {
+      const timeoutId = setTimeout(() => {
+        saveChanges(false);
+      }, 10000); // 10 seconds
+      return () => clearTimeout(timeoutId);
+    }
+  }, [nodes, edges, saveChanges]);
 
   // Generate the concept map
   const generateConceptMap = async () => {
@@ -171,9 +306,7 @@ export default function ConceptMapSidebar({
   // Download concept map as PNG
   const downloadAsPng = () => {
     if (!reactFlowRef.current) {
-      toast.error("Cannot export concept map", {
-        id: "download-concept-map",
-      });
+      toast.error("Cannot export concept map");
       return;
     }
 
@@ -181,19 +314,16 @@ export default function ConceptMapSidebar({
       id: "download-concept-map",
     });
 
-    // Prepare the element for export - apply any needed style adjustments
     const exportOptions = {
       quality: 1.0,
       backgroundColor: "white",
       width: reactFlowRef.current.offsetWidth,
       height: reactFlowRef.current.offsetHeight,
       style: {
-        // Ensure text is rendered properly
         fontKerning: "normal",
         textRendering: "optimizeLegibility",
       },
       filter: (node: HTMLElement) => {
-        // Make sure we're not capturing any toast notifications in the image
         return !node.classList?.contains?.("Toastify");
       },
     };
@@ -244,7 +374,7 @@ export default function ConceptMapSidebar({
             <Download className="w-4 h-4" />
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={onClose} title="Close">
+          <Button variant="ghost" size="sm" onClick={handleClose} title="Close">
             <XIcon className="w-4 h-4" />
           </Button>
         </div>
@@ -287,6 +417,11 @@ export default function ConceptMapSidebar({
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               fitView
               fitViewOptions={{ padding: 0.2 }}
               attributionPosition="bottom-right"
