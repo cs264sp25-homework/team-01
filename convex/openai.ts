@@ -547,11 +547,17 @@ export const generateConceptMap = action({
             }
             
             Concept Map Structure Rules:
-            1. Create a clear HIERARCHICAL structure:
-               - Main concept at the top center
+            1. Create a STRICT HIERARCHICAL structure:
+               - Main concept at the top center (Level 0)
                - Sub-concepts branch out below in a tree-like structure
-               - Maximum of 3 levels deep
-               - Avoid horizontal connections at the same level when possible
+               - Maximum of 3 levels deep (Level 0, 1, and 2)
+               - ONLY create edges between adjacent levels:
+                 * Level 0 → Level 1
+                 * Level 1 → Level 2
+               - NO edges between:
+                 * Same level nodes (no horizontal connections)
+                 * Level 0 → Level 2 (no skipping levels)
+                 * Level 2 → Level 1 (no upward connections)
             
             2. Node Limits and Selection:
                - Include 5-7 nodes total (not counting the main concept)
@@ -563,7 +569,7 @@ export const generateConceptMap = action({
             
             3. Node Positioning and Spacing:
                - Canvas dimensions: 1200px wide (x: 0 to 1200) × 600px high (y: 0 to 600)
-               - Main concept: centered at (600, 50)
+               - Main concept (Level 0): centered at (600, 50)
                
                - Level 1 nodes (y = 200):
                  * For 1 node: x = 600
@@ -593,6 +599,8 @@ export const generateConceptMap = action({
                  * "leads to", "results in" for cause-effect
                  * "influences", "affects" for relationships
                  * "requires", "needs" for dependencies
+               - ONLY create edges between adjacent levels
+               - NO horizontal or level-skipping edges
             
             5. Layout Balance:
                - Center the entire concept map around x = 600
@@ -619,7 +627,7 @@ export const generateConceptMap = action({
                - When multiple long-label nodes are on the same level:
                  * Alternate their y-positions slightly (±30px)
                  * Increase horizontal spacing between them by 100px
-            
+              
             Do not include any explanation or text outside the JSON structure.
             Make sure the output is valid JSON that can be parsed.
             `

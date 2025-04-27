@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
+import { searchHighlight } from "../plugins/searchHighlightPlugin";
 
 interface CustomNodeData {
   label: string;
@@ -12,6 +13,7 @@ export default function CustomNode({
 }: NodeProps<CustomNodeData>) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(data.label);
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -41,9 +43,41 @@ export default function CustomNode({
     data.onLabelChange?.(editValue);
   };
 
+  const handleClick = (evt: React.MouseEvent) => {
+    // Get the editor element
+    const editorEl = document.querySelector(
+      '[data-slate-editor="true"]'
+    ) as HTMLElement;
+    if (!editorEl) return;
+
+    // Clear any existing highlights first
+    searchHighlight.clear(editorEl);
+    setIsHighlighted(false);
+
+    // If already highlighted, just clear
+    if (isHighlighted) {
+      return;
+    }
+
+    // Highlight the node's label text
+    const { matchCount, matches } = searchHighlight.highlight(
+      editorEl,
+      data.label,
+      false
+    );
+
+    if (matchCount > 0 && matches.length > 0) {
+      searchHighlight.highlightCurrent(matches[0]);
+      setIsHighlighted(true);
+    }
+  };
+
   return (
     <div
-      className="px-4 py-2 shadow-md rounded-md bg-white border-2 border-gray-200"
+      className={`px-4 py-2 shadow-md rounded-md bg-white border-2 ${
+        isHighlighted ? "border-yellow-400" : "border-gray-200"
+      }`}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
       <Handle
@@ -59,7 +93,7 @@ export default function CustomNode({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          className="w-full bg-transparent border-none text-center focus:outline-none"
+          className="w-full text-center bg-transparent border-none focus:outline-none"
         />
       ) : (
         <div className="text-center">{data.label}</div>
