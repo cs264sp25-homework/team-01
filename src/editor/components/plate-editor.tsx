@@ -1,4 +1,3 @@
-
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -13,7 +12,7 @@ import {
   SearchIcon,
   ListFilterIcon,
   NetworkIcon,
-  FileDownIcon
+  FileDownIcon,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -284,199 +283,358 @@ export function PlateEditor({
     setShowExportDialog(false);
   }, []);
 
+  // Define types for PDF creation
+  interface PdfCreationOptions {
+    title?: string;
+    saveLocally?: boolean;
+    filename?: string;
+  }
+
+  // Helper utility functions for PDF generation
+  const parseColor = (color: string) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { r: 0, g: 0, b: 0 };
+    
+    ctx.fillStyle = color;
+    const rgb = ctx.fillStyle;
+    const match = rgb.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+    
+    if (match) {
+      return {
+        r: parseInt(match[1], 16),
+        g: parseInt(match[2], 16),
+        b: parseInt(match[3], 16)
+      };
+    }
+    return { r: 0, g: 0, b: 0 };
+  };
+
+  const hasStyledProperty = (obj: any, propName: string): boolean => {
+    if (!obj || typeof obj !== 'object') return false;
+    if (obj[propName] !== undefined) return true;
+    
+    // Check in nested style objects
+    if (obj.style && obj.style[propName] !== undefined) return true;
+    
+    // Check all other properties for nested objects
+    for (const key in obj) {
+      if (typeof obj[key] === 'object' && key !== 'children') {
+        if (hasStyledProperty(obj[key], propName)) return true;
+      }
+    }
+    
+    return false;
+  };
+  
+  const getStyledPropertyValue = (obj: any, propName: string): any => {
+    if (!obj || typeof obj !== 'object') return undefined;
+    if (obj[propName] !== undefined) return obj[propName];
+    
+    // Check in nested style objects
+    if (obj.style && obj.style[propName] !== undefined) return obj.style[propName];
+    
+    // Check all other properties for nested objects
+    for (const key in obj) {
+      if (typeof obj[key] === 'object' && key !== 'children') {
+        const value = getStyledPropertyValue(obj[key], propName);
+        if (value !== undefined) return value;
+      }
+    }
+    
+    return undefined;
+  };
+
+  const normalizeContentFormat = (content: any[]): any[] => {
+    const processNode = (node: any): any => {
+      // Handle paragraphs and other block elements
+      if (node.type) {
+        const newNode = { ...node };
+        
+        // Process children
+        if (Array.isArray(node.children)) {
+          newNode.children = node.children.map(processNode);
+        } else {
+          newNode.children = [{ text: "" }];
+        }
+        
+        return newNode;
+      }
+      
+      // Handle text nodes
+      if (typeof node === 'object' && node.text !== undefined) {
+        // Start with a clean normalized object with all original properties
+        const normalized = { ...node };
+        
+        // Use recursive property checks for formatting
+        if (hasStyledProperty(node, 'bold') || hasStyledProperty(node, 'Bold') || 
+            hasStyledProperty(node, 'fontWeight') || 
+            getStyledPropertyValue(node, 'fontWeight') === 'bold' ||
+            getStyledPropertyValue(node, 'fontWeight') === '700') {
+          normalized.bold = true;
+        }
+        
+        // Normalize italic formatting
+        if (hasStyledProperty(node, 'italic') || hasStyledProperty(node, 'Italic') ||
+            getStyledPropertyValue(node, 'fontStyle') === 'italic') {
+          normalized.italic = true;
+        }
+        
+        // Normalize underline
+        if (hasStyledProperty(node, 'underline') || hasStyledProperty(node, 'Underline') ||
+            getStyledPropertyValue(node, 'textDecoration') === 'underline') {
+          normalized.underline = true;
+        }
+        
+        // Normalize strikethrough
+        if (hasStyledProperty(node, 'strikethrough') || hasStyledProperty(node, 'Strikethrough') ||
+            getStyledPropertyValue(node, 'textDecoration') === 'line-through') {
+          normalized.strikethrough = true;
+        }
+        
+        // Handle color
+        const colorValue = getStyledPropertyValue(node, 'color') || getStyledPropertyValue(node, 'Color');
+        if (colorValue) {
+          normalized.color = colorValue;
+        }
+        
+        // Handle fontSize
+        const fontSizeValue = getStyledPropertyValue(node, 'fontSize') || getStyledPropertyValue(node, 'FontSize');
+        if (fontSizeValue) {
+          normalized.fontSize = fontSizeValue;
+        }
+        
+        // Clean up any style objects - we've extracted what we need
+        delete normalized.style;
+        
+        // Ensure we remove any non-standard properties that might confuse Plate
+        delete normalized.Bold;
+        delete normalized.Italic;
+        delete normalized.Underline;
+        delete normalized.Strikethrough;
+        delete normalized.Color;
+        delete normalized.FontSize;
+        delete normalized['font-weight'];
+        delete normalized['font-style'];
+        
+        return normalized;
+      }
+      
+      // Handle strings
+      if (typeof node === 'string') {
+        return { text: node };
+      }
+      
+      // Default case
+      return node;
+    };
+    
+    return content.map(processNode);
+  };
+  
+  const createPdfFromContent = (content: any[], options: PdfCreationOptions = {}) => {
+    // Create new PDF document
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    // First, normalize the content to ensure consistent formatting
+    const normalizedContent = normalizeContentFormat(content);
+    
+    // Set up initial position and line height
+    const margin = 20;
+    let yPos = margin;
+    const lineHeight = 7;
+    const pageHeight = doc.internal.pageSize.height;
+    const maxWidth = doc.internal.pageSize.width - (margin * 2);
+    let listCounters: { [key: number]: number } = {};
+    
+    // Add title if provided
+    if (options.title) {
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(options.title, margin, yPos);
+      yPos += lineHeight * 2;
+    }
+
+    // Process the document
+    normalizedContent.forEach((node) => processNode(node));
+    
+    // Function to process a node and its children
+    function processNode(node: any, level: number = 0) {
+      // Reset styles for new block
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+
+      let indent = margin + (level * 10);
+      
+      // Handle different node types depending on Plate's structure
+      if (node.type === 'p' && node.indent && node.indent > 0) {
+        // This is likely a list item from IndentListPlugin
+        
+        // Determine if it's a numbered list or bullet list
+        const isNumbered = node.listStyleType === 'decimal' || node.listStyleType === 'number';
+        
+        // Set indent based on the indent level
+        indent = margin + (node.indent * 10);
+        
+        // Generate appropriate marker
+        let marker = '';
+        if (isNumbered) {
+          // For numbered lists
+          listCounters[node.indent] = (listCounters[node.indent] || 0) + 1;
+          marker = `${listCounters[node.indent]}. `;
+        } else {
+          // For bullet points
+          marker = '• ';
+        }
+        
+        // Draw the marker
+        doc.text(marker, indent - 10, yPos);
+        indent += 5; // Add space after marker
+      }
+      
+      // Continue with normal node processing
+      if (node.children) {
+        let currentText = '';
+        let currentDecorations: Function[] = [];
+
+        node.children.forEach((child: any) => {
+          if (typeof child === 'string') {
+            currentText += child;
+          } else if (child.type) {
+            // Process structured child node recursively
+            if (currentText) {
+              // Render accumulated text before processing child
+              const textWidth = maxWidth - (indent - margin);
+              const lines = doc.splitTextToSize(currentText, textWidth);
+              lines.forEach((line: string) => {
+                if (yPos > pageHeight - margin) {
+                  doc.addPage();
+                  yPos = margin;
+                }
+                doc.text(line, indent, yPos);
+                currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+                yPos += lineHeight;
+              });
+              currentText = '';
+              currentDecorations = [];
+            }
+            
+            // Process child node
+            processNode(child, level + 1);
+          } else {
+            // Process text node with styling
+            const processed = processTextNode(child);
+            currentText += processed.text;
+            currentDecorations = [...currentDecorations, ...processed.decorations];
+          }
+        });
+
+        // Render any remaining text
+        if (currentText) {
+          const textWidth = maxWidth - (indent - margin);
+          const lines = doc.splitTextToSize(currentText, textWidth);
+          lines.forEach((line: string) => {
+            if (yPos > pageHeight - margin) {
+              doc.addPage();
+              yPos = margin;
+            }
+            doc.text(line, indent, yPos);
+            currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
+            yPos += lineHeight;
+          });
+        }
+      }
+
+      // Add spacing after blocks
+      if (node.type === 'p') {
+        yPos += lineHeight / 2;
+      }
+    }
+    
+    // Function to process text nodes with styling
+    function processTextNode(node: any) {
+      let text = node.text || '';
+      const decorations: ((x: number, width: number) => void)[] = [];
+      
+      // Handle text styling
+      const fontStyle = [];
+      // Use recursive property checks
+      if (hasStyledProperty(node, 'bold') || hasStyledProperty(node, 'Bold') || 
+          hasStyledProperty(node, 'fontWeight') || 
+          getStyledPropertyValue(node, 'fontWeight') === 'bold' ||
+          getStyledPropertyValue(node, 'fontWeight') === '700') {
+        fontStyle.push('bold');
+      }
+      
+      if (hasStyledProperty(node, 'italic') || hasStyledProperty(node, 'Italic') ||
+          getStyledPropertyValue(node, 'fontStyle') === 'italic') {
+        fontStyle.push('italic');
+      }
+      doc.setFont('Helvetica', fontStyle.length ? fontStyle.join('-') : 'normal');
+
+      // Handle text color
+      if (node.color || node.Color || node.style?.color) {
+        try {
+          const colorValue = node.color || node.Color || node.style?.color;
+          const { r, g, b } = parseColor(colorValue);
+          doc.setTextColor(r, g, b);
+        } catch (e) {
+          console.warn('Color parsing failed:', e);
+          doc.setTextColor(0, 0, 0);
+        }
+      }
+
+      // Handle font size
+      if (node.fontSize || node.FontSize || node.style?.fontSize) {
+        const sizeValue = node.fontSize || node.FontSize || node.style?.fontSize;
+        const ptSize = parseFloat(sizeValue) * 0.75;
+        doc.setFontSize(ptSize);
+      }
+
+      // Handle underline and strikethrough
+      if (node.underline || node.Underline || node.style?.textDecoration === 'underline') {
+        decorations.push((x: number, width: number) => {
+          doc.line(x, yPos + 1, x + width, yPos + 1);
+        });
+      }
+
+      if (node.strikethrough || node.Strikethrough || node.style?.textDecoration === 'line-through') {
+        decorations.push((x: number, width: number) => {
+          doc.line(x, yPos - 2, x + width, yPos - 2);
+        });
+      }
+
+      return { text, decorations };
+    }
+    
+    // Save locally if requested
+    if (options.saveLocally && options.filename) {
+      doc.save(options.filename);
+    }
+    
+    return doc;
+  };
+
+  // Now update the exportToPDF function to use the shared utility
   const exportToPDF = useCallback(async () => {
     try {
       setIsExporting(true);
       setShowExportDialog(false);
       toast.loading("Exporting to PDF...", { id: "export-pdf" });
       
-      // Debug: Log the editor structure to console
-      console.log("Editor structure:", JSON.stringify(editor.children, null, 2));
-      
-      // Create new PDF document
-      const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
+      // Create the PDF document using the shared utility
+      const doc = createPdfFromContent(editor.children, {
+        saveLocally: true,
+        filename: `${pdfFileName}.pdf`
       });
-
-      // Set up initial position and line height
-      const margin = 20;
-      let yPos = margin;
-      const lineHeight = 7;
-      const pageHeight = doc.internal.pageSize.height;
-      const maxWidth = doc.internal.pageSize.width - (margin * 2);
-      let listCounters: { [key: number]: number } = {};
-
-      // Convert color from any format to RGB
-      const parseColor = (color: string) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { r: 0, g: 0, b: 0 };
-        
-        ctx.fillStyle = color;
-        const rgb = ctx.fillStyle;
-        const match = rgb.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-        
-        if (match) {
-          return {
-            r: parseInt(match[1], 16),
-            g: parseInt(match[2], 16),
-            b: parseInt(match[3], 16)
-          };
-        }
-        return { r: 0, g: 0, b: 0 };
-      };
-
-      // Function to process text nodes with styling
-      const processTextNode = (node: any) => {
-        let text = node.text || '';
-        const decorations: ((x: number, width: number) => void)[] = [];
-        
-        // Handle text styling
-        const fontStyle = [];
-        if (node.bold) fontStyle.push('bold');
-        if (node.italic) fontStyle.push('italic');
-        doc.setFont('Helvetica', fontStyle.length ? fontStyle.join('-') : 'normal');
-
-        // Handle text color
-        if (node.color) {
-          try {
-            const { r, g, b } = parseColor(node.color);
-            doc.setTextColor(r, g, b);
-          } catch (e) {
-            console.warn('Color parsing failed:', e);
-            doc.setTextColor(0, 0, 0);
-          }
-        }
-
-        // Handle font size
-        if (node.fontSize) {
-          const ptSize = parseFloat(node.fontSize) * 0.75;
-          doc.setFontSize(ptSize);
-        }
-
-        // Handle underline and strikethrough
-        if (node.underline) {
-          decorations.push((x: number, width: number) => {
-            doc.line(x, yPos + 1, x + width, yPos + 1);
-          });
-        }
-
-        if (node.strikethrough) {
-          decorations.push((x: number, width: number) => {
-            doc.line(x, yPos - 2, x + width, yPos - 2);
-          });
-        }
-
-        return { text, decorations };
-      };
-
-      // Function to process a node and its children
-      const processNode = (node: any, level: number = 0) => {
-        // Debug: Log node type and properties
-        console.log("Processing node:", node.type, node);
-        
-        // Reset styles for new block
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-
-        let indent = margin + (level * 10);
-        
-        // Handle different node types depending on Plate's structure
-        if (node.type === 'p' && node.indent && node.indent > 0) {
-          // This is likely a list item from IndentListPlugin
-          console.log("Found list item with indent:", node.indent, "listStyleType:", node.listStyleType);
-          
-          // Determine if it's a numbered list or bullet list
-          const isNumbered = node.listStyleType === 'decimal' || node.listStyleType === 'number';
-          
-          // Set indent based on the indent level
-          indent = margin + (node.indent * 10);
-          
-          // Generate appropriate marker
-          let marker = '';
-          if (isNumbered) {
-            // For numbered lists
-            listCounters[node.indent] = (listCounters[node.indent] || 0) + 1;
-            marker = `${listCounters[node.indent]}. `;
-          } else {
-            // For bullet points
-            marker = '• ';
-          }
-          
-          // Draw the marker
-          doc.text(marker, indent - 10, yPos);
-          indent += 5; // Add space after marker
-        }
-        
-        // Continue with normal node processing
-        if (node.children) {
-          let currentText = '';
-          let currentDecorations: Function[] = [];
-
-          node.children.forEach((child: any) => {
-            if (typeof child === 'string') {
-              currentText += child;
-            } else if (child.type) {
-              // Process structured child node recursively
-              if (currentText) {
-                // Render accumulated text before processing child
-                const textWidth = maxWidth - (indent - margin);
-                const lines = doc.splitTextToSize(currentText, textWidth);
-                lines.forEach((line: string) => {
-                  if (yPos > pageHeight - margin) {
-                    doc.addPage();
-                    yPos = margin;
-                  }
-                  doc.text(line, indent, yPos);
-                  currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
-                  yPos += lineHeight;
-                });
-                currentText = '';
-                currentDecorations = [];
-              }
-              
-              // Process child node
-              processNode(child, level + 1);
-            } else {
-              // Process text node with styling
-              const processed = processTextNode(child);
-              currentText += processed.text;
-              currentDecorations = [...currentDecorations, ...processed.decorations];
-            }
-          });
-
-          // Render any remaining text
-          if (currentText) {
-            const textWidth = maxWidth - (indent - margin);
-            const lines = doc.splitTextToSize(currentText, textWidth);
-            lines.forEach((line: string) => {
-              if (yPos > pageHeight - margin) {
-                doc.addPage();
-                yPos = margin;
-              }
-              doc.text(line, indent, yPos);
-              currentDecorations.forEach(decoration => decoration(indent, doc.getTextWidth(line)));
-              yPos += lineHeight;
-            });
-          }
-        }
-
-        // Add spacing after blocks
-        if (node.type === 'p') {
-          yPos += lineHeight / 2;
-        }
-      };
-
-      // Process the document
-      editor.children.forEach(node => processNode(node));
-
-      // Save the PDF with the custom name
-      doc.save(`${pdfFileName}.pdf`);
+      
       toast.success("PDF exported successfully!", { id: "export-pdf" });
     } catch (error) {
       console.error("Error exporting PDF:", error);

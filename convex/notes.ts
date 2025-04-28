@@ -412,6 +412,111 @@ function extractTextFromContent(content: any[]): string {
   }).join(" ");
 }
 
+// Generate a unique share code and record sharing info
+export const share = mutation({
+  args: {
+    id: v.id("notes"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    const existingNote = await ctx.db.get(args.id);
+    
+    if (!existingNote) {
+      throw new Error("Note not found");
+    }
+    
+    if (existingNote.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+    
+    // Generate a unique share code
+    const shareCode = Math.random().toString(36).substring(2, 10);
+    
+    // Get or create share info
+    const existingShares = await ctx.db
+      .query("shared_notes")
+      .withIndex("by_noteId", (q) => q.eq("noteId", args.id))
+      .collect();
+      
+    if (existingShares.length > 0) {
+      // Return existing share code
+      return existingShares[0].shareCode;
+    }
+    
+    // Record share info
+    await ctx.db.insert("shared_notes", {
+      noteId: args.id,
+      ownerId: userId,
+      shareCode: shareCode,
+      createdAt: Date.now()
+    });
+    
+    return shareCode;
+  },
+});
+
+// Import a note by share code
+export const importNote = mutation({
+  args: {
+    shareCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const userId = identity.tokenIdentifier.split("|")[1];
+    
+    // Get shared note info
+    const sharedNoteInfo = await ctx.db
+      .query("shared_notes")
+      .withIndex("by_shareCode", (q) => q.eq("shareCode", args.shareCode))
+      .first();
+    
+    if (!sharedNoteInfo) {
+      throw new Error("Invalid share code");
+    }
+    
+    // Get the original note
+    const originalNote = await ctx.db.get(sharedNoteInfo.noteId);
+    
+    if (!originalNote) {
+      throw new Error("Note not found");
+    }
+    
+    const now = Date.now();
+    
+    // Create a new note with the same content but for the current user
+    const newNoteId = await ctx.db.insert("notes", {
+      title: `${originalNote.title} (Imported)`,
+      content: originalNote.content,
+      userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    
+    // Process the note to create chunks
+    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
+      noteId: newNoteId,
+      content: originalNote.content,
+    });
+    
+    // Process the note to create embeddings
+    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
+      noteId: newNoteId,
+    });
+    
+    return newNoteId;
+  },
+});
+
 // Action to process chunks and embeddings, typically triggered on leaving a note
 export const processNoteEmbeddingsOnNavigate = action({
   args: {

@@ -6,18 +6,29 @@ import { SignOut } from "../../auth/components/sign-out";
 import { PlateEditor } from "../../editor/components/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
 import ChatSidebar from "../../editor/components/ChatSidebar";
-import { MessageCircleIcon, Loader2, NetworkIcon } from "lucide-react";
+import { MessageCircleIcon, Loader2, NetworkIcon, Share2Icon } from "lucide-react";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "../../ui/resizable";
 import { Button } from "@/ui/button";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "../../plate-ui/dialog";
+import { Input } from "../../plate-ui/input";
 import TestGeneratorSidebar from "../../editor/components/TestGeneratorSidebar";
 import ConceptMapSidebar from "../../editor/components/ConceptMapSidebar";
 import { BookOpenIcon } from "lucide-react";
 import { useNotes } from "../hooks/useNotes";
 import { navigateToText } from "../hooks/textNavigation";
+import { useMutation } from "convex/react";
+import { toast } from "react-hot-toast";
 
 export function NotePage() {
   const { noteId } = useParams();
@@ -36,6 +47,58 @@ export function NotePage() {
     handleRename,
     handleDelete,
   } = useNotes(noteId);
+
+  // Sharing and Import functionality
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [importNoteId, setImportNoteId] = useState("");
+  const shareNote = useMutation(api.notes.share);
+  const importNote = useMutation(api.notes.importNote);
+
+  // Handle initial share button click - just show the dialog
+  const handleShareClick = () => {
+    setIsShareModalOpen(true);
+  };
+
+  // Handle share confirmation - generate and copy share code
+  const handleShareConfirm = async () => {
+    if (!noteId) return;
+    
+    try {
+      const shareCode = await shareNote({ id: noteId as Id<"notes"> });
+      await navigator.clipboard.writeText(shareCode);
+      toast.success("Share code copied to clipboard! Share this code with others.");
+      setIsShareModalOpen(false);
+    } catch (error) {
+      console.error("Failed to share note:", error);
+      toast.error("Failed to share note");
+    }
+  };
+
+  // Handle import button click - import note by share code
+  const handleImport = async () => {
+    if (!importNoteId) {
+      toast.error("Please enter a share code");
+      return;
+    }
+    
+    try {
+      // Import the note with the share code
+      const newNoteId = await importNote({ 
+        shareCode: importNoteId
+      });
+      
+      setIsImportModalOpen(false);
+      setImportNoteId("");
+      toast.success("Note imported successfully!");
+      
+      // Navigate to the newly imported note
+      navigate(`/notes/${newNoteId}`);
+    } catch (error) {
+      console.error("Failed to import note:", error);
+      toast.error("Failed to import note. Please check the share code and try again.");
+    }
+  };
 
   // Sidebar states
   const [activeSidebar, setActiveSidebar] = useState<
@@ -209,6 +272,19 @@ export function NotePage() {
                 </button>
               </div>
             )}
+            
+            {/* Share Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShareClick}
+              className="flex items-center gap-1"
+              title="Share Note"
+            >
+              <Share2Icon className="w-4 h-4" />
+              Share
+            </Button>
+            
             <button
               onClick={handleDeleteWithConfirmation}
               className="p-2 text-red-600 hover:text-red-800"
@@ -325,6 +401,50 @@ export function NotePage() {
           </ResizablePanelGroup>
         </div>
       </div>
+
+      {/* Share Note Dialog */}
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Note</DialogTitle>
+            <DialogDescription>
+              When you click Share, a unique share code will be generated and copied to your clipboard. You can share this code with others to let them import your note.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsShareModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleShareConfirm}>Share</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Note Modal */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Note</DialogTitle>
+            <DialogDescription>
+              Enter the share code that was shared with you to import the note.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 mt-4">
+            <Input
+              value={importNoteId}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setImportNoteId(e.target.value)}
+              placeholder="Paste share code here..."
+              className="flex-1"
+            />
+          </div>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleImport}>Import</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
