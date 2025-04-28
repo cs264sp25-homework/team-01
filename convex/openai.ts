@@ -181,23 +181,6 @@ export const organizeNotes = action({
       
        console.log("Successfully parsed array with", parsed.length, "items");
       
-       // Add the test sentence to the last paragraph if not already there
-       const lastItem = parsed[parsed.length - 1];
-       if (lastItem && lastItem.children && lastItem.children.length > 0) {
-         const lastText = lastItem.children[0].text || "";
-        
-         if (!lastText.includes("testing last sentence in prompt openai.ts")) {
-           parsed.push({
-             type: "p",
-             children: [{ text: "testing last sentence in prompt openai.ts" }],
-             id: "test-" + Date.now()
-           });
-          
-           // Re-stringify with the added test paragraph
-           organizedContent = JSON.stringify(parsed);
-         }
-       }
-      
      } catch (e) {
        console.error("JSON parsing error:", e, organizedContent);
        throw new ConvexError({
