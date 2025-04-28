@@ -483,8 +483,7 @@ export const generateConceptMap = action({
 
     try {
       // Initialize OpenAI client
-      const openai = new OpenAI({ apiKey });
-      
+  
       // Parse the content to get the actual text
       const notes = JSON.parse(args.content);
       
