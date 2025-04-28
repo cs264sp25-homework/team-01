@@ -4,7 +4,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { Plate } from "@udecode/plate/react";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { FallbackEmailResult } from "../../../convex/email";
 import { useCreateEditor } from "@/editor/hooks/use-create-editor";
 import { Editor, EditorContainer } from "@/plate-ui/editor";
 import { Button } from "@/ui/button";
@@ -14,7 +13,6 @@ import {
   ListFilterIcon,
   NetworkIcon,
   FileDownIcon,
-  ShareIcon
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -66,17 +64,8 @@ export function PlateEditor({
   const [isExporting, setIsExporting] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [pdfFileName, setPdfFileName] = useState("notes");
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState("");
-  const [emailSubject, setEmailSubject] = useState("Shared Notes");
-  const [isSharing, setIsSharing] = useState(false);
-  const [shareMessage, setShareMessage] = useState("");
-  const [customSenderEmail, setCustomSenderEmail] = useState("");
-  const [isSettingSender, setIsSettingSender] = useState(false);
 
   const organizeNotesAction = useAction(api.openai.organizeNotes);
-  const sendEmailAction = useAction(api.email.sendWithAttachment);
-  const setSenderEmailAction = useAction(api.email.setSenderEmail);
 
   // Parse initialContent for the editor
   const parsedInitialContent = useMemo(() => {
@@ -658,104 +647,6 @@ export function PlateEditor({
     }
   }, [editor, pdfFileName]);
 
-  const handleShareButtonClick = useCallback(() => {
-    setRecipientEmail("");
-    setEmailSubject("Shared Notes");
-    setShareMessage("");
-    
-    // Set default custom sender email from localStorage if available
-    const storedEmail = localStorage.getItem('lastCustomSenderEmail');
-    if (storedEmail) {
-      setCustomSenderEmail(storedEmail);
-    } else {
-      setCustomSenderEmail("");
-    }
-    
-    setShowShareDialog(true);
-  }, []);
-
-  const handleShareDialogClose = useCallback(() => {
-    setShowShareDialog(false);
-  }, []);
-
-  // Update the shareViaEmail function to use the shared utility
-  const shareViaEmail = useCallback(async () => {
-    try {
-      setIsSharing(true);
-      setShowShareDialog(false);
-      toast.loading("Sending your notes via email...", { id: "share-notes" });
-      
-      // Generate a filename for the PDF
-      const pdfFilename = `${emailSubject.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
-      
-      // Create the PDF document using the shared utility
-      const doc = createPdfFromContent(editor.children);
-      
-      // Get PDF as base64 string
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
-      
-      // Call the backend to send the email with PDF attachment
-      const result = await sendEmailAction({
-        recipientEmail,
-        subject: emailSubject,
-        message: shareMessage || "Shared note as PDF attachment.",
-        attachmentName: pdfFilename,
-        attachmentData: pdfBase64,
-        contentType: "application/pdf"
-      });
-      
-      // Check if we're in fallback mode (direct sending failed)
-      const isFallbackResult = (result as FallbackEmailResult).fallbackMode === true;
-      
-      if (isFallbackResult) {
-        const fallbackResult = result as FallbackEmailResult;
-        // Save the PDF locally for manual attachment
-        doc.save(pdfFilename);
-        
-        // Open the mailto URL
-        if (fallbackResult.mailtoUrl) {
-          window.location.href = fallbackResult.mailtoUrl;
-        }
-        
-        toast.success("PDF downloaded for manual attachment. Opening email client...", { id: "share-notes" });
-      } else {
-        // Direct email sending succeeded
-        toast.success(result.message || "Email sent successfully!", { id: "share-notes" });
-      }
-    } catch (error) {
-      console.error("Error sharing notes:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to share notes",
-        { id: "share-notes" }
-      );
-    } finally {
-      setIsSharing(false);
-    }
-  }, [editor, recipientEmail, emailSubject, shareMessage, sendEmailAction]);
-
-  const handleSetSenderEmail = useCallback(async () => {
-    if (!customSenderEmail.trim()) return;
-    
-    try {
-      setIsSettingSender(true);
-      const result = await setSenderEmailAction({
-        email: customSenderEmail.trim()
-      });
-      
-      // Store in localStorage for future use
-      localStorage.setItem('lastCustomSenderEmail', customSenderEmail.trim());
-      
-      toast.success(result.message);
-    } catch (error) {
-      console.error("Failed to set sender email:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to set sender email"
-      );
-    } finally {
-      setIsSettingSender(false);
-    }
-  }, [customSenderEmail, setSenderEmailAction]);
-
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full">
@@ -824,24 +715,6 @@ export function PlateEditor({
                   </>
                 )}
               </Button>
-              <Button
-                onClick={handleShareButtonClick}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={isSharing}
-              >
-                {isSharing ? (
-                  <>
-                    <span className="w-4 h-4 animate-spin">◌</span>
-                    Sharing...
-                  </>
-                ) : (
-                  <>
-                    <ShareIcon className="w-4 h-4" />
-                    Share via Email
-                  </>
-                )}
-              </Button>
             </div>
             {lastSavedAt && (
               <span className="text-sm text-gray-500">
@@ -901,112 +774,6 @@ export function PlateEditor({
               </Button>
               <Button onClick={exportToPDF} disabled={!pdfFileName.trim()}>
                 Export
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Share via Email Dialog */}
-        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Share via Email</DialogTitle>
-              <DialogDescription>
-                Enter recipient's email and customize the message. The note will be attached as a PDF.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div>
-                <label htmlFor="recipient-email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Recipient Email
-                </label>
-                <Input
-                  id="recipient-email"
-                  type="email"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  placeholder="example@example.com"
-                  className="w-full"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label htmlFor="email-subject" className="block text-sm font-medium text-gray-700 mb-1">
-                  Subject
-                </label>
-                <Input
-                  id="email-subject"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  placeholder="Subject"
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label htmlFor="email-message" className="block text-sm font-medium text-gray-700 mb-1">
-                  Message (Optional)
-                </label>
-                <Input
-                  id="email-message"
-                  value={shareMessage}
-                  onChange={(e) => setShareMessage(e.target.value)}
-                  placeholder="Add a message to your email"
-                  className="w-full"
-                />
-              </div>
-              
-              {/* Required Sender Email Section */}
-              <div className="border-t pt-4 mt-4">
-                <div>
-                  <label htmlFor="custom-sender" className="block text-sm font-medium text-gray-700 mb-1">
-                    Sender Email (required for automatic sending)
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="custom-sender"
-                      type="email"
-                      value={customSenderEmail}
-                      onChange={(e) => setCustomSenderEmail(e.target.value)}
-                      placeholder="your-verified-email@gmail.com"
-                      className="flex-grow"
-                    />
-                    <Button 
-                      onClick={handleSetSenderEmail} 
-                      disabled={!customSenderEmail.trim() || isSettingSender}
-                      className="whitespace-nowrap"
-                      size="sm"
-                    >
-                      {isSettingSender ? "Setting..." : "Set Sender"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    This must be your verified email in SendGrid.
-                  </p>
-                </div>
-              </div>
-              
-              {/* Advanced Debugging Section - Collapsible */}
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-gray-500">Troubleshooting Info</summary>
-                <div className="mt-2 p-3 bg-gray-50 rounded text-xs">
-                  <p>To ensure proper email delivery:</p>
-                  <ol className="list-decimal ml-4 mt-1 space-y-1">
-                    <li>Use a verified email as the sender</li>
-                    <li>Verify this email in the SendGrid dashboard</li>
-                    <li>If automatic sending fails, the app will fall back to your local email client</li>
-                  </ol>
-                </div>
-              </details>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={handleShareDialogClose}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={shareViaEmail} 
-                disabled={!recipientEmail.trim() || !emailSubject.trim() || !customSenderEmail.trim()}
-              >
-                Send Email with PDF
               </Button>
             </DialogFooter>
           </DialogContent>
