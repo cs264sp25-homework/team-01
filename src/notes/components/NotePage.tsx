@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { SignOut } from "../../auth/components/sign-out";
 import { PlateEditor } from "../../editor/components/plate-editor";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -20,6 +22,7 @@ import { navigateToText } from "../hooks/textNavigation";
 export function NotePage() {
   const { noteId } = useParams();
   const navigate = useNavigate();
+  const processEmbeddings = useAction(api.notes.processNoteEmbeddingsOnNavigate);
 
   // Use the notes hook
   const {
@@ -117,6 +120,27 @@ export function NotePage() {
     }
   };
 
+  // Handler for navigating back to dashboard, processing embeddings first
+  const handleNavigateToDashboard = async () => {
+    if (!note || !noteId) return;
+    
+    // Navigate immediately
+    navigate("/");
+
+    // Trigger embedding processing in the background (fire and forget)
+    try {
+      console.log(`Triggering embedding processing for note ${noteId} after navigating...`);
+      // Pass the current content to avoid re-fetching in the action
+      // NO await here - let it run in the background
+      processEmbeddings({ noteId: noteId as Id<"notes">, content: note.content }); 
+      // Log initiation, not completion
+      console.log(`Background embedding processing initiated for note ${noteId}.`);
+    } catch (error) {
+      // Log errors, but don't block the user as navigation already happened
+      console.error("Failed to initiate background embedding processing:", error);
+    }
+  };
+
   if (!note) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -133,7 +157,7 @@ export function NotePage() {
         <div className="flex items-center justify-between px-4 py-2 mx-auto max-w-7xl">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/")}
+              onClick={handleNavigateToDashboard}
               className="px-4 py-2 text-gray-800 transition-colors bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
             >
               Back to Dashboard

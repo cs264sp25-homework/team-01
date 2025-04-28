@@ -266,73 +266,52 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   }, [inputValue]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    const userMessageContent = inputValue.trim();
+    if (!userMessageContent || !noteId || !note) return;
 
-    // If this is the first message and we have a welcome message, store it in the database
-    if (messages.length === 1 && messages[0].id === "welcome") {
-      try {
-        await storeMessageMutation({
-          content: messages[0].content,
-          sender: "ai",
-          noteId: noteId,
-        });
-      } catch (error) {
-        console.error("Failed to store welcome message:", error);
-      }
-    }
-
-    // Add user message
-    const userMessage: Message = {
-      id: `temp_user_${Date.now()}`,
-      content: inputValue,
+    const newUserMessage: Message = {
+      id: `temp-${Date.now()}`,
+      content: userMessageContent,
       sender: "user",
       timestamp: new Date(),
     };
 
-    // Create a placeholder for AI response
-    const aiMessageId = `temp_ai_${Date.now() + 1}`;
-    const aiMessagePlaceholder: Message = {
-      id: aiMessageId,
-      content: "",
+    const loadingAiMessage: Message = {
+      id: `temp-ai-${Date.now()}`,
+      content: "Thinking...",
       sender: "ai",
       timestamp: new Date(),
       isLoading: true,
-      isStreaming: true,
     };
 
-    setMessages((prev) => [...prev, userMessage, aiMessagePlaceholder]);
+    setMessages((prev) => [...prev, newUserMessage, loadingAiMessage]);
     setInputValue("");
+    textareaRef.current?.focus();
 
-    // Call the AI service through Convex with streaming
     try {
-      const response = await streamingChatAction({
-        message: inputValue,
+      const { messageId: aiMessageId, content: finalContent } = await streamingChatAction({
+        message: userMessageContent,
         noteId: noteId,
-        noteTitle: note?.title,
-        noteContent: note?.content,
+        noteTitle: note.title,
+        noteContent: note.content,
+        useEmbeddings: false,
       });
 
-      // Update the AI message with the final response
+      // Update the specific AI message with the final content and real ID
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === aiMessageId
-            ? {
-                ...msg,
-                id: response.messageId,
-                content: response.content,
-                isLoading: false,
-                isStreaming: false,
-              }
+          msg.id === loadingAiMessage.id
+            ? { ...msg, id: aiMessageId, content: finalContent, isLoading: false }
             : msg
         )
       );
     } catch (error) {
-      console.error("Error in streaming chat:", error);
-      // Handle error
+      console.error("Error sending message:", error);
+      // Update the AI message to show an error state
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === aiMessageId
-            ? { ...msg, isLoading: false, error: true, isStreaming: false }
+          msg.id === loadingAiMessage.id
+            ? { ...msg, content: "Error", error: true, isLoading: false }
             : msg
         )
       );
@@ -340,130 +319,131 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   };
 
   const handleRegenerateMessage = async (id: string) => {
-    // Find the AI message to regenerate
-    const messageToRegenerate = messages.find((msg) => msg.id === id);
-    if (!messageToRegenerate || messageToRegenerate.sender !== "ai") return;
-
-    // Set regenerating flag to prevent chat history updates
-    setRegeneratingMessageId(id);
-
-    // Find the index of the message being regenerated
     const messageIndex = messages.findIndex((msg) => msg.id === id);
-
-    // Remove all messages after this one from the UI
-    if (messageIndex >= 0 && messageIndex < messages.length - 1) {
-      setMessages((prev) => prev.slice(0, messageIndex + 1));
+    if (messageIndex === -1 || messages[messageIndex].sender !== "ai" || !note) {
+      return;
     }
 
-    // Update the current AI message to show loading
+    const userMessageIndex = messageIndex - 1;
+    if (userMessageIndex < 0 || messages[userMessageIndex].sender !== "user") {
+      console.error("Could not find preceding user message for regeneration.");
+      return;
+    }
+
+    const userMessage = messages[userMessageIndex];
+    const aiMessageToRegenerate = messages[messageIndex];
+
+    // Set loading state for the message being regenerated
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === id
-          ? {
-              ...msg,
-              content: "",
-              isLoading: true,
-              error: false,
-              isStreaming: true,
-            }
-          : msg
+        msg.id === id ? { ...msg, isLoading: true, error: false, content: "Regenerating..." } : msg
       )
     );
+    setRegeneratingMessageId(id); // Track which message is regenerating
 
     try {
-      // For database messages (not temporary ones), use the ID for regeneration
-      if (!id.startsWith("temp_")) {
-        const response = await regenerateStreamingAction({
-          messageId: id as Id<"messages">,
-          noteId: noteId,
-          contextMessageCount: 10,
-          noteTitle: note?.title,
-          noteContent: note?.content,
-        });
+      const { content: finalContent } = await regenerateStreamingAction({
+        messageId: id as Id<"messages">,
+        noteId: noteId,
+        noteTitle: note.title,
+        noteContent: note.content,
+        useEmbeddings: false,
+      });
 
-        // Update the AI message with the final response
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === id
-              ? {
-                  ...msg,
-                  content: response.content,
-                  isLoading: false,
-                  isStreaming: false,
-                }
-              : msg
-          )
-        );
-      } else {
-        // Handle temporary messages (shouldn't normally happen)
-        throw new Error("Cannot regenerate temporary message");
-      }
-
-      // Clear regenerating flag after a short delay to ensure UI is updated
-      setTimeout(() => {
-        setRegeneratingMessageId(null);
-      }, 500);
-    } catch (error) {
-      console.error("Error regenerating message:", error);
-      // Handle error
+      // Update the AI message with the new final content
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === id
-            ? { ...msg, isLoading: false, error: true, isStreaming: false }
+            ? { ...msg, content: finalContent, isLoading: false, isStreaming: false }
             : msg
         )
       );
-      setRegeneratingMessageId(null);
+    } catch (error) {
+      console.error("Error regenerating message:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === id ? { ...msg, error: true, isLoading: false, content: "Error regenerating" } : msg
+        )
+      );
+    } finally {
+      setRegeneratingMessageId(null); // Clear the regenerating state
     }
   };
 
   const handleEditMessage = async (id: string, newContent: string) => {
-    // Find the message being edited
     const messageIndex = messages.findIndex((msg) => msg.id === id);
-    if (messageIndex < 0) return;
+    if (messageIndex === -1 || messages[messageIndex].sender !== "user" || !note) {
+      return; // Can only edit user messages
+    }
 
-    const message = messages[messageIndex];
-
-    // Update the edited message
+    // 1. Update the user message locally and in DB
     setMessages((prev) =>
       prev.map((msg) => (msg.id === id ? { ...msg, content: newContent } : msg))
     );
+    try {
+      await updateMessageMutation({
+        messageId: id as Id<"messages">,
+        content: newContent,
+      });
+    } catch (error) {
+      console.error("Failed to update user message in DB:", error);
+      // Optionally revert local change or show error
+      return;
+    }
 
-    // Remove all messages after this one from the UI
-    if (messageIndex < messages.length - 1) {
-      setMessages((prev) => prev.slice(0, messageIndex + 1));
-
-      // Delete subsequent messages from the database if this is a database message
-      if (!id.startsWith("temp_")) {
-        try {
-          await deleteMessagesAfterMutation({
-            messageId: id as Id<"messages">,
-            noteId: noteId,
-          });
-        } catch (error) {
-          console.error("Failed to delete subsequent messages:", error);
-        }
+    // 2. Delete all subsequent messages locally and in DB
+    const messagesToDelete = messages.slice(messageIndex + 1);
+    setMessages((prev) => prev.slice(0, messageIndex + 1));
+    if (messagesToDelete.length > 0) {
+      try {
+        await deleteMessagesAfterMutation({
+          noteId: noteId,
+          timestamp: messages[messageIndex].timestamp.getTime(),
+        });
+      } catch (error) {
+        console.error("Failed to delete subsequent messages in DB:", error);
+        // Handle potential inconsistency
       }
     }
 
-    // Update the message in the database if it's not a temporary message
-    if (!id.startsWith("temp_") && message.sender === "user") {
-      try {
-        await updateMessageMutation({
-          messageId: id as Id<"messages">,
-          content: newContent,
-        });
+    // 3. Create a new placeholder AI message
+    const loadingAiMessage: Message = {
+      id: `temp-ai-edit-${Date.now()}`,
+      content: "Thinking...",
+      sender: "ai",
+      timestamp: new Date(),
+      isLoading: true,
+    };
+    setMessages((prev) => [...prev, loadingAiMessage]);
 
-        // If this is a user message, we need to regenerate the AI response
-        if (messageIndex < messages.length - 1) {
-          const nextMessage = messages[messageIndex + 1];
-          if (nextMessage && nextMessage.sender === "ai") {
-            handleRegenerateMessage(nextMessage.id);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to update message:", error);
-      }
+    // 4. Trigger the streaming chat action with the edited user message
+    try {
+      const { messageId: aiMessageId, content: finalContent } = await streamingChatAction({
+        message: newContent,
+        noteId: noteId,
+        noteTitle: note.title,
+        noteContent: note.content,
+        useEmbeddings: false,
+      });
+
+      // Update the placeholder AI message with the final content and real ID
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === loadingAiMessage.id
+            ? { ...msg, id: aiMessageId, content: finalContent, isLoading: false }
+            : msg
+        )
+      );
+    } catch (error) {
+      console.error("Error sending edited message:", error);
+      // Update the AI message to show an error state
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === loadingAiMessage.id
+            ? { ...msg, content: "Error", error: true, isLoading: false }
+            : msg
+        )
+      );
     }
   };
 
