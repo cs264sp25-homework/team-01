@@ -123,17 +123,6 @@ export const update = mutation({
       updatedAt: now,
     });
     
-    // Process updated note to create/update chunks
-    await ctx.scheduler.runAfter(0, internal.chunking.processNoteChunks, {
-      noteId: args.id,
-      content: args.content,
-    });
-    
-    // Process the note to create embeddings
-    await ctx.scheduler.runAfter(0, internal.embeddings.processNoteEmbeddings, {
-      noteId: args.id,
-    });
-    
     return args.id;
   },
 });
@@ -154,14 +143,43 @@ export const remove = mutation({
     const existingNote = await ctx.db.get(args.id);
     
     if (!existingNote) {
-      throw new Error("Note not found");
+      // Note already deleted, perhaps? Succeed gracefully.
+      console.warn(`Attempted to delete non-existent note: ${args.id}`);
+      return args.id;
     }
     
     if (existingNote.userId !== userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized to delete this note");
     }
     
+    // 1. Delete associated embeddings
+    try {
+      const embeddingsToDelete = await ctx.runQuery(internal.embeddings.getEmbeddingsForNote, { noteId: args.id });
+      console.log(`Deleting ${embeddingsToDelete.length} embeddings for note ${args.id}`);
+      for (const embedding of embeddingsToDelete) {
+        await ctx.runMutation(internal.embeddings.deleteEmbedding, { embeddingId: embedding._id });
+      }
+    } catch (error) {
+      console.error(`Error deleting embeddings for note ${args.id}:`, error);
+      // Decide if we should continue or throw? For now, log and continue deletion.
+    }
+    
+    // 2. Delete associated chunks
+    try {
+      // Assuming getChunksForNote is available in internal API
+      const chunksToDelete = await ctx.runQuery(internal.chunking.getChunksForNote, { noteId: args.id }); 
+      console.log(`Deleting ${chunksToDelete.length} chunks for note ${args.id}`);
+      for (const chunk of chunksToDelete) {
+        await ctx.db.delete(chunk._id);
+      }
+    } catch (error) {
+       console.error(`Error deleting chunks for note ${args.id}:`, error);
+       // Log and continue
+    }
+    
+    // 3. Delete the note itself
     await ctx.db.delete(args.id);
+    console.log(`Successfully deleted note ${args.id} and associated data.`);
     
     return args.id;
   },
@@ -393,6 +411,52 @@ function extractTextFromContent(content: any[]): string {
     return "";
   }).join(" ");
 }
+
+// Action to process chunks and embeddings, typically triggered on leaving a note
+export const processNoteEmbeddingsOnNavigate = action({
+  args: {
+    noteId: v.id("notes"),
+    content: v.string(), // Pass content to avoid re-fetching
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // Allow processing even if not logged in? Or should this be secured?
+      // For now, let's assume it requires auth context to be safe.
+      throw new Error("Not authenticated");
+    }
+
+    try {
+      console.log(`Processing chunks and embeddings for note ${args.noteId} on navigate`);
+      
+      // 1. Delete existing embeddings for this note
+      const existingEmbeddings = await ctx.runQuery(internal.embeddings.getEmbeddingsForNote, { noteId: args.noteId });
+      console.log(`Deleting ${existingEmbeddings.length} existing embeddings for note ${args.noteId}`);
+      for (const embedding of existingEmbeddings) {
+        await ctx.runMutation(internal.embeddings.deleteEmbedding, { embeddingId: embedding._id });
+      }
+      
+      // 2. Process chunks (this mutation already deletes old chunks)
+      await ctx.runMutation(internal.chunking.processNoteChunks, {
+        noteId: args.noteId,
+        content: args.content, // Use the provided content
+      });
+      
+      // 3. Process embeddings for the newly created chunks
+      await ctx.runAction(internal.embeddings.processNoteEmbeddings, {
+        noteId: args.noteId,
+      });
+      
+      console.log(`Successfully processed chunks and embeddings for note ${args.noteId}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error processing chunks/embeddings for note ${args.noteId}:`, error);
+      // Decide if failure should propagate or just be logged
+      // throw error; // Re-throw if the caller needs to know about failure
+      return { success: false }; // Or return failure status
+    }
+  },
+});
 
 // Reprocess all notes to regenerate chunks and embeddings
 export const regenerateAllEmbeddings = action({

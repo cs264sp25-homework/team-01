@@ -198,9 +198,10 @@ export const streamingChatResponse = action({
         systemPrompt += `\n\nDocument Title: ${args.noteTitle}`;
       }
       
-      // and if the noteContent is provided
-      if (args.noteContent && (!args.useEmbeddings || !systemPrompt.includes("relevant sections"))) {
-        systemPrompt += `\n\nDocument Content: ${args.noteContent.substring(0, 8000)}`; // Limit content to avoid token limits
+      // Add note content if explicitly requested (in-note chat) or as a fallback
+      // if embeddings were used but didn't find anything relevant.
+      if (args.noteContent && (args.useEmbeddings === false || !systemPrompt.includes("relevant sections"))) {
+        systemPrompt += `\n\nFull Document Content (first 8000 chars):\n${args.noteContent.substring(0, 8000)}`; // Limit content
       }
       
       systemPrompt += "\n\nPlease provide a helpful, accurate response based on the document content provided.";
@@ -367,10 +368,10 @@ export const regenerateStreamingResponse = action({
         systemPrompt += `\n\nDocument Title: ${args.noteTitle}`;
       }
       
-      // Add note content as a fallback if embeddings are not available or didn't find anything
-      // and if the noteContent is provided
-      if (args.noteContent && (!args.useEmbeddings || !systemPrompt.includes("relevant sections"))) {
-        systemPrompt += `\n\nDocument Content: ${args.noteContent.substring(0, 8000)}`; // Limit content to avoid token limits
+      // Add note content if explicitly requested (in-note chat) or as a fallback
+      // if embeddings were used but didn't find anything relevant.
+      if (args.noteContent && (args.useEmbeddings === false || !systemPrompt.includes("relevant sections"))) {
+        systemPrompt += `\n\nFull Document Content (first 8000 chars):\n${args.noteContent.substring(0, 8000)}`; // Limit content
       }
       
       systemPrompt += "\n\nPlease provide a helpful, accurate response based on the document content provided.";
