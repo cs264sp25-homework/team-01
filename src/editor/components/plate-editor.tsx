@@ -629,6 +629,7 @@ export function PlateEditor({
       setShowExportDialog(false);
       toast.loading("Exporting to PDF...", { id: "export-pdf" });
       
+      
       // Create the PDF document using the shared utility
       const doc = createPdfFromContent(editor.children, {
         saveLocally: true,
