@@ -597,4 +597,99 @@ export const chatWithContext = action({
       });
     }
   },
+});
+
+// New action for the ephemeral "Ask AI" chat feature
+export const askAI = action({
+  args: {
+    query: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ response: string; sources: { title: string, id: Id<"notes"> }[] }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    
+    if (!identity) {
+      // Return an error structure
+      return { response: "Error: Unauthorized. Please sign in.", sources: [] };
+    }
+    
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("OpenAI API key not configured for askAI");
+      return { response: "Error: AI functionality is not configured.", sources: [] };
+    }
+    
+    try {
+      // 1. Perform semantic search
+      let contextForPrompt = "";
+      let sourceNotes : { title: string, id: Id<"notes"> }[] = []; 
+      try {
+        const relevantChunks = await ctx.runAction(api.embeddings.searchSimilarContent, {
+          query: args.query,
+          limit: 5, 
+        });
+        
+        if (relevantChunks && relevantChunks.length > 0) {
+          contextForPrompt = "\n\nRelevant Information from Notes:";
+          const addedNoteIds = new Set<string>();
+          relevantChunks.forEach((chunk) => {
+            contextForPrompt += `\n\nSource: ${chunk.noteTitle}\nContent: ${chunk.content}`;
+            if (!addedNoteIds.has(chunk.noteId)) {
+                 sourceNotes.push({ title: chunk.noteTitle, id: chunk.noteId });
+                 addedNoteIds.add(chunk.noteId);
+            }
+          });
+          console.log(`Found ${relevantChunks.length} relevant chunks for the Ask AI query.`);
+        } else {
+          console.log("No relevant chunks found for the Ask AI query.");
+          contextForPrompt = "\n\nNo specific information from your notes seemed relevant to the question.";
+        }
+      } catch (error) {
+        console.error("Error retrieving relevant chunks for Ask AI:", error);
+        contextForPrompt = "\n\n(Could not retrieve context from notes due to an error.)";
+      }
+      
+      // Construct the system prompt
+      let systemPrompt = `You are a helpful AI assistant. Answer the user's question naturally and conversationally. Use the following information from the user's notes to inform your answer, but do not explicitly mention 'the context' or 'the snippets provided'. Your response should ONLY contain the answer to the question. Do NOT include a 'Sources:' section or list any source titles in your response.`;
+      systemPrompt += contextForPrompt;
+      systemPrompt += "\n\nUser's Question:";
+
+      // 2. Call OpenAI API
+      const openaiClient = new OpenAI({ apiKey });
+      const chatCompletion = await openaiClient.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: args.query }
+        ],
+        model: "gpt-4o", 
+        temperature: 0.7,
+      });
+
+      const responseContent = chatCompletion.choices[0]?.message?.content;
+
+      if (!responseContent) {
+        console.error("OpenAI returned an empty response for askAI.")
+        return { response: "Error: AI returned an empty response.", sources: [] };
+      }
+
+      // 3. Return the response string AND the source notes
+      return { response: responseContent, sources: sourceNotes };
+
+    } catch (error) {
+      console.error("Error in askAI action:", error);
+      // Return a user-friendly error message string
+      let errorMessage = "Sorry, I encountered an error while processing your request.";
+      if (error instanceof ConvexError) {
+        errorMessage = error.message; // Use Convex error message if available
+      } else if (error instanceof Error) {
+        // Basic check for specific OpenAI errors if needed
+        if (error.message.includes('rate limit')) {
+          errorMessage = "AI rate limit reached. Please try again later.";
+        } else if (error.message.includes('insufficient_quota')) {
+           errorMessage = "AI quota exceeded.";
+        }
+        // else keep generic message
+      }
+      return { response: `Error: ${errorMessage}`, sources: [] };
+    }
+  },
 }); 
