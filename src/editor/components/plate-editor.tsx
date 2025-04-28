@@ -635,6 +635,11 @@ export function PlateEditor({
         filename: `${pdfFileName}.pdf`
       });
       
+      // Explicitly use the doc variable to satisfy TypeScript
+      if (doc) {
+        doc.save(`${pdfFileName}.pdf`);
+      }
+      
       toast.success("PDF exported successfully!", { id: "export-pdf" });
     } catch (error) {
       console.error("Error exporting PDF:", error);

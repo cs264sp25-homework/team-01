@@ -210,7 +210,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
   const deleteMessagesAfterMutation = useMutation(api.chat.deleteMessagesAfter);
   const updateMessageMutation = useMutation(api.chat.updateMessage);
   const clearChatHistoryMutation = useMutation(api.chat.clearChatHistory);
-  const storeMessageMutation = useMutation(api.chat.storeMessage);
+  // const storeMessageMutation = useMutation(api.chat.storeMessage);
 
   // Move the function outside the component or use useCallback
   const getDefaultWelcomeMessage = useCallback((): Message => ({
@@ -330,8 +330,8 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       return;
     }
 
-    const userMessage = messages[userMessageIndex];
-    const aiMessageToRegenerate = messages[messageIndex];
+    // const userMessage = messages[userMessageIndex];
+    // const aiMessageToRegenerate = messages[messageIndex];
 
     // Set loading state for the message being regenerated
     setMessages((prev) =>
@@ -398,7 +398,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
       try {
         await deleteMessagesAfterMutation({
           noteId: noteId,
-          timestamp: messages[messageIndex].timestamp.getTime(),
+          messageId: id as Id<"messages">,
         });
       } catch (error) {
         console.error("Failed to delete subsequent messages in DB:", error);
