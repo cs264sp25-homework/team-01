@@ -89,6 +89,7 @@ export const navigateToText = (text: string) => {
           return true;
         }
         searchHighlight.clear(editorEl);
+        
       }
     }
     
