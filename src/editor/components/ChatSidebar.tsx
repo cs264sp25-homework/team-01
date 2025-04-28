@@ -503,7 +503,7 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
 
       {/* Input Area - fixed at bottom */}
       <div className="flex-shrink-0 p-4 border-t bg-muted/20">
-        <div className="relative flex items-end border rounded-lg border-input bg-background">
+        <div className="relative flex items-end w-full">
           <Textarea
             ref={textareaRef}
             value={inputValue}
@@ -512,9 +512,9 @@ export default function ChatSidebar({ onClose, noteId }: ChatSidebarProps) {
             placeholder="Type a message..."
             className={cn(
               "w-full overflow-y-auto",
-              "px-14 py-5", // Removed pl-14 since we don't need space for the file upload button
+              "px-4 py-5 pr-12",
               "focus-visible:ring-0",
-              "border-0 focus-visible:ring-offset-0 rounded-lg",
+              "border border-input rounded-lg",
               "min-h-[60px]",
               "resize-none",
               "bg-background text-foreground"
