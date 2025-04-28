@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import OpenAI from "openai";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 // Configuration
 const EMBEDDING_MODEL = "text-embedding-3-small";
@@ -128,6 +129,7 @@ export const searchSimilarContent = action({
   handler: async (ctx, args): Promise<Array<{
     chunkId: Id<"chunks">;
     noteId: Id<"notes">;
+    noteTitle: string;
     content: string;
     similarity: number;
   }>> => {
@@ -144,7 +146,6 @@ export const searchSimilarContent = action({
       
       console.log(`Generating embedding for query: "${args.query}"`);
       
-      // Generate embedding for the query
       const response = await openai.embeddings.create({
         model: EMBEDDING_MODEL,
         input: args.query,
@@ -153,7 +154,8 @@ export const searchSimilarContent = action({
 
       const queryVector = response.data[0].embedding;
       
-      // Get all embeddings
+      // Get all embeddings - Consider optimizing if this becomes slow
+      // Could potentially use vector search index if available/configured
       const embeddings = await ctx.runQuery(internal.embeddings.listEmbeddings);
       console.log(`Found ${embeddings.length} total embeddings to search through`);
       
@@ -162,7 +164,7 @@ export const searchSimilarContent = action({
         return [];
       }
       
-      // Calculate similarity scores for all embeddings
+      // Calculate similarity scores
       const similarities = embeddings.map((embedding) => {
         const similarity = calculateCosineSimilarity(queryVector, embedding.vector);
         return {
@@ -172,7 +174,7 @@ export const searchSimilarContent = action({
         };
       });
       
-      // Sort by similarity score (highest first)
+      // Sort by similarity score
       similarities.sort((a, b) => b.similarity - a.similarity);
       
       // Take top results
@@ -182,23 +184,28 @@ export const searchSimilarContent = action({
       console.log(`Top ${topResults.length} similarities:`, 
         topResults.map(r => `${r.similarity.toFixed(3)} (${r.noteId})`).join(', '));
       
-      // Get the actual chunk content for the top results
-      const results = await Promise.all(
+      // Get the chunk content AND note title for the top results
+      const resultsWithTitles = await Promise.all(
         topResults.map(async (result) => {
           const chunk = await ctx.runQuery(internal.embeddings.getChunkById, {
             id: result.chunkId,
           });
+          // Fetch the note title using the noteId
+          const note = await ctx.runQuery(api.notes.get, {
+             id: result.noteId 
+          }); 
           
           return {
             chunkId: result.chunkId,
             noteId: result.noteId,
+            noteTitle: note?.title || "Unknown Note",
             content: chunk?.content || "",
             similarity: result.similarity,
           };
         })
       );
       
-      return results;
+      return resultsWithTitles;
     } catch (error) {
       console.error("Error searching similar content:", error);
       throw error;

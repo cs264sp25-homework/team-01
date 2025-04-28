@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useConvexAuth, useMutation, useQuery, useAction } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignIn } from "./auth/components/sign-in";
 import { SignOut } from "./auth/components/sign-out";
@@ -10,7 +10,7 @@ import { Id } from "../convex/_generated/dataModel";
 import "./App.css";
 import { RenameModal } from "./notes/components/RenameModal";
 import { Toaster } from "react-hot-toast";
-import { Switch } from "../src/ui/switch";
+import { AskAIModal } from "./components/AskAIModal";
 
 interface Note {
   _id: Id<"notes">;
@@ -21,7 +21,6 @@ interface Note {
   createdAt?: number;
   updatedAt: number;
   contentPreview?: string;
-  similarity?: number;
 }
 
 function MainContent() {
@@ -29,7 +28,7 @@ function MainContent() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [isAskAIModalOpen, setIsAskAIModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const createNote = useMutation(api.notes.create);
@@ -37,70 +36,17 @@ function MainContent() {
   const deleteNote = useMutation(api.notes.remove);
   const notes = useQuery(api.notes.list);
   
-  // Use regular search or semantic search based on the toggle
-  const regularSearchResults = useQuery(
+  const searchResults = useQuery(
     api.notes.search,
-    searchQuery.length >= 2 && !useSemanticSearch ? { query: searchQuery } : "skip"
+    searchQuery.length >= 2 ? { query: searchQuery } : "skip"
   );
   
-  // For semantic search, we need to use an action
-  const semanticSearchAction = useAction(api.notes.semanticSearch);
-  const regenerateEmbeddingsAction = useAction(api.notes.regenerateAllEmbeddings);
-  const [semanticResults, setSemanticResults] = useState<Array<{
-    _id: Id<"notes">;
-    title: string;
-    content: string;
-    updatedAt: number;
-    contentPreview?: string;
-    similarity?: number;
-  }>>([]);
-  const [isLoadingSemanticResults, setIsLoadingSemanticResults] = useState(false);
-  
-  // Update the semantic search indicator to use the loading state
-  const isSemanticSearchActive = searchQuery.length >= 2 && useSemanticSearch;
-  const showSemanticLoadingIndicator = isSemanticSearchActive && isLoadingSemanticResults;
-  const showSemanticActiveIndicator = isSemanticSearchActive && semanticResults.length > 0 && !isLoadingSemanticResults;
-
-  // Handle semantic search
-  useEffect(() => {
-    let isCancelled = false;
-    
-    const performSemanticSearch = async () => {
-      if (searchQuery.length >= 2 && useSemanticSearch) {
-        setIsLoadingSemanticResults(true);
-        try {
-          const results = await semanticSearchAction({ query: searchQuery });
-          if (!isCancelled) {
-            setSemanticResults(results);
-            setIsLoadingSemanticResults(false);
-          }
-        } catch (error) {
-          console.error("Semantic search error:", error);
-          if (!isCancelled) {
-            setSemanticResults([]);
-            setIsLoadingSemanticResults(false);
-          }
-        }
-      } else {
-        setSemanticResults([]);
-      }
-    };
-    
-    performSemanticSearch();
-    
-    return () => {
-      isCancelled = true;
-    };
-  }, [searchQuery, useSemanticSearch, semanticSearchAction]);
-
-  // Filter notes based on search query
   const filteredNotes = useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) {
       return notes;
     }
-    
-    return useSemanticSearch ? semanticResults : regularSearchResults || [];
-  }, [notes, searchQuery, regularSearchResults, useSemanticSearch, semanticResults]);
+    return searchResults || [];
+  }, [notes, searchQuery, searchResults]);
 
   useEffect(() => {
     console.log("MainContent mounted");
@@ -157,13 +103,12 @@ function MainContent() {
           <h2 className="text-xl font-medium text-gray-900">My Notes</h2>
           
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* Search Bar */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                 </svg>
-        </div>
+              </div>
               <input
                 type="text"
                 placeholder="Search in notes..."
@@ -181,53 +126,15 @@ function MainContent() {
                   </svg>
                 </button>
               )}
-      </div>
+            </div>
             
-            {/* Semantic search toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
-                Semantic search
-                {showSemanticLoadingIndicator && 
-                  <span className="ml-2 text-xs text-blue-500 animate-pulse">
-                    (loading...)
-                  </span>
-                }
-                {showSemanticActiveIndicator && 
-                  <span className="ml-2 text-xs text-green-500" title="Showing conceptually related results">
-                    (concept match)
-                  </span>
-                }
-              </span>
-              <Switch
-                checked={useSemanticSearch}
-                onCheckedChange={setUseSemanticSearch}
-                aria-label="Toggle semantic search"
-              />
-              
-              {useSemanticSearch && (
-                <button
-                  onClick={async () => {
-                    if (window.confirm("Regenerate embeddings for all notes? This will improve search accuracy but may take a moment.")) {
-                      try {
-                        const result = await regenerateEmbeddingsAction({});
-                        if (result.success) {
-                          alert(`Successfully reprocessed ${result.count} notes for better search accuracy.`);
-                        } else {
-                          alert("Failed to regenerate embeddings.");
-                        }
-                      } catch (error) {
-                        console.error("Error regenerating embeddings:", error);
-                        alert("An error occurred while regenerating embeddings.");
-                      }
-                    }
-                  }}
-                  className="px-2 py-1 ml-2 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
-                  title="Reprocess all notes to improve search accuracy"
-                >
-                  Improve Search
-                </button>
-              )}
-        </div>
+            <button
+              onClick={() => setIsAskAIModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-gray-100 transition-colors bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 18a4.5 4.5 0 0 0-4.5-4.5H9.5a4.5 4.5 0 0 0-4.5 4.5"/><path d="M12 12a3 3 0 1 0-3-3"/><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M6 12H2"/><path d="m7.8 7.8-2.9-2.9"/></svg>
+              Ask AI
+            </button>
             
             <button
               onClick={() => setIsModalOpen(true)}
@@ -315,6 +222,12 @@ function MainContent() {
           onRename={handleRenameNote}
           initialTitle={noteToRename?.title || ""}
         />
+
+        <AskAIModal 
+          isOpen={isAskAIModalOpen}
+          onClose={() => setIsAskAIModalOpen(false)}
+        />
+
       </main>
     </div>
   );
@@ -330,7 +243,6 @@ function App() {
     console.log("Auth state:", { isLoading, isAuthenticated });
   }, [location, isLoading, isAuthenticated]);
 
-  // Show loading state while auth is being checked
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -339,7 +251,6 @@ function App() {
     );
   }
 
-  // Helper function to handle authentication redirects
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return isAuthenticated ? <>{children}</> : <Navigate to="/team-01/signin" replace />;
   };
@@ -347,27 +258,18 @@ function App() {
   return (
     <>
       <Toaster position="top-right" />
-    <Routes>
-        {/* Root redirects */}
+      <Routes>
         <Route path="/" element={<Navigate to="/team-01" replace />} />
-        
-        {/* Sign-in routes */}
         <Route path="/signin" element={<Navigate to="/team-01/signin" replace />} />
         <Route 
           path="/team-01/signin" 
           element={!isAuthenticated ? <SignIn /> : <Navigate to="/team-01" replace />} 
         />
-        
-        {/* Main content routes */}
         <Route path="/team-01" element={<ProtectedRoute><MainContent /></ProtectedRoute>} />
-        
-        {/* Note routes - handle both with and without team-01 prefix */}
         <Route path="/notes/:noteId" element={<Navigate to={location.pathname.replace('/notes/', '/team-01/notes/')} replace />} />
         <Route path="/team-01/notes/:noteId" element={<ProtectedRoute><NotePage /></ProtectedRoute>} />
-        
-        {/* Catch-all route for any unmatched paths */}
         <Route path="*" element={<Navigate to="/team-01" replace />} />
-    </Routes>
+      </Routes>
     </>
   );
 }
