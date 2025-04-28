@@ -88,8 +88,9 @@ export const navigateToText = (text: string) => {
           searchHighlight.highlightCurrent(matches[0]);
           return true;
         }
-        searchHighlight.clear(editorEl);
         
+        searchHighlight.clear(editorEl);
+
       }
     }
     
