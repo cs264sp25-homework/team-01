@@ -521,7 +521,7 @@ export const generateConceptMap = action({
                   "id": "unique_edge_id_1",
                   "source": "unique_id_1",
                   "target": "unique_id_2",
-                  "label": "relationship"
+                  "data": { "label": "relationship" }
                 },
                 ...
               ]
@@ -653,10 +653,50 @@ export const generateConceptMap = action({
           throw new Error("No nodes returned in concept map");
         }
         
+        console.log("Original edges from OpenAI:", JSON.stringify(parsed.edges));
+        
+        // Transform edges to ensure label is in data object, not at top level
+        if (parsed.edges && Array.isArray(parsed.edges)) {
+          parsed.edges = parsed.edges.map((edge: any) => {
+            const newEdge = { ...edge };
+            
+            // If there's a top-level label, move it to data.label and remove top-level
+            if (newEdge.label !== undefined) {
+              newEdge.data = newEdge.data || {};
+              newEdge.data.label = newEdge.label;
+              delete newEdge.label;
+            }
+            
+            return newEdge;
+          });
+        }
+        
+        console.log("Transformed edges:", JSON.stringify(parsed.edges));
+        
+        // Manual fix: Create a modified version without any top-level labels
+        const fixedEdges = parsed.edges.map((edge: any) => {
+          // Create a new object WITHOUT the label property
+          const { label, ...edgeWithoutLabel } = edge;
+          
+          // Add the data property if it doesn't exist
+          if (!edgeWithoutLabel.data) {
+            edgeWithoutLabel.data = {};
+          }
+          
+          // Put the label in data.label if it exists
+          if (label) {
+            edgeWithoutLabel.data.label = label;
+          }
+          
+          return edgeWithoutLabel;
+        });
+        
+        console.log("Fixed edges:", JSON.stringify(fixedEdges));
+        
         // Store the concept map in the database
         await ctx.runMutation(api.conceptMap.storeConceptMap, {
           nodes: parsed.nodes,
-          edges: parsed.edges,
+          edges: fixedEdges,
           noteId: args.noteId as Id<"notes">,
         });
         

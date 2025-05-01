@@ -84,9 +84,8 @@ export default function ConceptMapSidebar({
           source: edge.source,
           target: edge.target,
           type: edge.type,
-          label: edge.label || edge.data?.label || "",
           data: {
-            label: edge.label || edge.data?.label || "",
+            label: edge.data?.label || edge.label || "",
           },
         }));
 
