@@ -41,8 +41,32 @@ const schema = defineSchema({
     .index("by_note", ["noteId"])
     .index("by_user_and_note", ["userId", "noteId"]),
   conceptMaps: defineTable({
-    nodes: v.array(v.any()),
-    edges: v.array(v.any()),
+    nodes: v.array(v.object({
+      id: v.string(),
+      type: v.optional(v.string()),
+      position: v.object({
+        x: v.number(),
+        y: v.number(),
+      }),
+      data: v.object({
+        label: v.string(),
+      }),
+      width: v.optional(v.any()),
+      height: v.optional(v.any()),
+    })),
+    edges: v.array(v.object({
+      id: v.string(),
+      source: v.string(),
+      target: v.string(),
+      type: v.optional(v.string()),
+      label: v.optional(v.string()),
+      data: v.optional(v.object({
+        label: v.optional(v.string()),
+      })),
+      style: v.optional(v.any()),
+      markerEnd: v.optional(v.any()),
+      labelStyle: v.optional(v.any()),
+    })),
     userId: v.string(),
     noteId: v.string(),
     createdAt: v.number(),
