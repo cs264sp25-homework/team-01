@@ -106,6 +106,7 @@ const schema = defineSchema({
       numQuestions: v.number(),
       types: v.array(v.string()),
       difficulty: v.string(),
+      sections: v.array(v.string()),
     }),
   })
     .index("by_user", ["userId"])

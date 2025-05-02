@@ -142,6 +142,7 @@ type TestUpdate = {
     numQuestions: number;
     types: string[];
     difficulty: string;
+    sections: string[];
   };
 };
 
@@ -166,6 +167,7 @@ export const update = mutation({
         numQuestions: v.number(),
         types: v.array(v.string()),
         difficulty: v.string(),
+        sections: v.array(v.string()),
       })
     ),
   },
