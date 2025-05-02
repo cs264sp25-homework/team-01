@@ -9,10 +9,10 @@ interface TestGeneratorHeaderProps {
 
 export function TestGeneratorHeader({ view, onToggleView, onClose }: TestGeneratorHeaderProps) {
   return (
-    <div className="flex items-center justify-between flex-shrink-0 p-4 border-b bg-muted/30">
+    <div className="flex items-center justify-between flex-shrink-0 p-2 border-b bg-muted/30">
       <div className="flex flex-col">
-        <h3 className="font-semibold text-left">Test Generator</h3>
-        <div className="flex items-center mt-1 text-xs text-muted-foreground">
+        <h3 className="font-semibold text-left text-base leading-tight">Test Generator</h3>
+        <div className="flex items-center mt-0.5 text-xs text-muted-foreground">
           <span className="inline-block w-2 h-2 mr-2 bg-blue-500 rounded-full"></span>
           {view === "generate" ? "Create practice questions" : "Manage saved tests"}
         </div>
